@@ -18,6 +18,7 @@ export const CATEGORIAS_WIKI = [
 ];
 
 export function renderMarkdown(md: string): string {
+  if (md.trimStart().startsWith("<")) return md;
   return md
     .replace(/^### (.+)$/gm, "<h3>$1</h3>")
     .replace(/^## (.+)$/gm, "<h2>$1</h2>")

@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "milpa-erp",
+    "site": "milpa-erp-app",
     "public": "out",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [

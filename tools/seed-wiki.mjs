@@ -1,50 +1,53 @@
 /**
  * seed-wiki.mjs
- * Puebla la wiki del ERP de Milpa con toda la documentación del proyecto.
- * Uso: node tools/seed-wiki.mjs
- *
- * Requiere: PROJECT_ID y API_KEY del proyecto Firebase del cliente.
+ * Puebla la wiki del ERP con contenido HTML rico.
+ * Uso: node tools/seed-wiki.mjs   (desde dentro de milpa-erp/)
  */
 
 const PROJECT_ID = "milpa-studio-landing";
-const API_KEY = "AIzaSyAchIbM2QykBHHol_5l_e4rpAj1Tvmyyuk";
-const BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+const API_KEY    = "AIzaSyAchIbM2QykBHHol_5l_e4rpAj1Tvmyyuk";
+const BASE_URL   = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function field(value) {
-  if (typeof value === "string") return { stringValue: value };
+  if (typeof value === "string")  return { stringValue: value };
   if (typeof value === "boolean") return { booleanValue: value };
-  if (typeof value === "number") return { integerValue: String(value) };
+  if (typeof value === "number")  return { integerValue: String(value) };
   return { stringValue: String(value) };
+}
+
+async function limpiarWiki() {
+  const res  = await fetch(`${BASE_URL}/wiki?key=${API_KEY}`);
+  const data = await res.json();
+  if (!data.documents) { console.log("  (wiki vacía, nada que limpiar)"); return; }
+  for (const doc of data.documents) {
+    const id = doc.name.split("/").pop();
+    await fetch(`${BASE_URL}/wiki/${id}?key=${API_KEY}`, { method: "DELETE" });
+    process.stdout.write("  ✗ " + (doc.fields?.titulo?.stringValue || id) + "\n");
+  }
 }
 
 async function crearPagina({ titulo, contenido, categoria }) {
   const body = {
     fields: {
-      titulo: field(titulo),
-      contenido: field(contenido),
-      categoria: field(categoria),
-      autor: field("Sistema"),
+      titulo:      field(titulo),
+      contenido:   field(contenido),
+      categoria:   field(categoria),
+      autor:       field("Sistema"),
       actualizadoEn: { timestampValue: new Date().toISOString() },
     },
   };
-
   const res = await fetch(`${BASE_URL}/wiki?key=${API_KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Error creando "${titulo}": ${err}`);
-  }
-
-  console.log(`✓  ${categoria} → ${titulo}`);
+  if (!res.ok) throw new Error(`Error creando "${titulo}": ${await res.text()}`);
+  console.log(`  ✓  [${categoria}] ${titulo}`);
 }
 
-// ─── Páginas wiki ─────────────────────────────────────────────────────────────
+// ─── Páginas ──────────────────────────────────────────────────────────────────
 
 const paginas = [
 
@@ -53,142 +56,156 @@ const paginas = [
 // ══════════════════════════════════════════════════════
 
 {
+  titulo: "Índice y Glosario",
+  categoria: "Visión",
+  contenido:
+`<span class="w-label">Plan de negocio y documentación técnica</span>
+<h2 style="font-size:1.5rem;font-weight:700;color:#1c1917;margin:0 0 0.5rem">Esta es la wiki de Milpa</h2>
+<p style="color:#78716c;margin-bottom:1.5rem">Aquí vive todo: la visión del negocio, cómo funciona el software, los clientes activos, y las guías de operación. Si eres nuevo en el equipo, empieza por <strong>Qué es Milpa</strong> y luego <strong>Arquitectura del ERP</strong>.</p>
+
+<span class="w-label">Mapa de páginas</span>
+<div class="w-grid2" style="margin-bottom:1.5rem">
+  <div class="w-card">
+    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#059669;margin-bottom:0.5rem">Visión</div>
+    <div style="font-size:0.875rem;color:#1c1917;line-height:2">→ Qué es Milpa</div>
+  </div>
+  <div class="w-card">
+    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#059669;margin-bottom:0.5rem">Negocio</div>
+    <div style="font-size:0.875rem;color:#1c1917;line-height:2">→ Modelo de negocio<br>→ Roles del equipo</div>
+  </div>
+  <div class="w-card">
+    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#059669;margin-bottom:0.5rem">Técnico</div>
+    <div style="font-size:0.875rem;color:#1c1917;line-height:2">→ Arquitectura del ERP<br>→ El stack tecnológico<br>→ Qué es un módulo</div>
+  </div>
+  <div class="w-card">
+    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#059669;margin-bottom:0.5rem">Producto · Operaciones</div>
+    <div style="font-size:0.875rem;color:#1c1917;line-height:2">→ Módulos disponibles<br>→ Cómo hacer un deploy<br>→ Onboarding de cliente nuevo</div>
+  </div>
+</div>
+
+<span class="w-label">Glosario de términos clave</span>
+
+<details>
+  <summary>Milpa — el estudio</summary>
+  <div class="details-body">
+    <strong>Milpa</strong> es un estudio de software basado en Oaxaca, México. El nombre viene del sistema agrícola mesoamericano donde maíz, frijol y calabaza crecen juntos — cultivos distintos que se complementan. El logomark (tres barras) representa exactamente eso.<br><br>
+    Construimos herramientas de gestión internas para negocios de 10 a 50 personas. No somos agencia web, no revendemos plataformas. El código que entregamos es MIT — el cliente se lo lleva si quiere.
+  </div>
+</details>
+
+<details>
+  <summary>ERP — qué significa y por qué el nuestro es diferente</summary>
+  <div class="details-body">
+    ERP es <em>Enterprise Resource Planning</em>: un sistema que centraliza las operaciones de un negocio (tareas, proyectos, clientes, inventario, etc.). Los ERPs genéricos como SAP u Odoo son enormes y cubren todo — lo cual los hace complejos, caros, y difíciles de adoptar para un negocio mediano.<br><br>
+    El ERP de Milpa es deliberadamente pequeño. Solo tiene los módulos que el negocio realmente usa. Cada cliente tiene su propia instancia, con su código y sus datos.
+  </div>
+</details>
+
+<details>
+  <summary>Módulo — la unidad funcional del sistema</summary>
+  <div class="details-body">
+    Un módulo es una función completa y autocontenida del ERP: <em>Tareas</em>, <em>Calendario</em>, <em>Wiki</em>, <em>Proyectos</em>. Cada uno vive en <code>src/modules/nombre/</code>, tiene su propia lógica y componentes, y se activa o desactiva por cliente desde <code>milpa.config.ts</code>.<br><br>
+    Si un cliente no necesita wiki, simplemente no la tiene activa. El código existe pero no aparece en su interfaz.
+  </div>
+</details>
+
+<details>
+  <summary>Fork — cómo cada cliente tiene su propio código</summary>
+  <div class="details-body">
+    Un fork es una copia del repositorio base (<code>milpa-cloud/erp</code>) en GitHub. Cada cliente tiene su fork privado con su <code>milpa.config.ts</code> personalizado y, si necesita algo único, su carpeta <code>cliente/</code>.<br><br>
+    Cuando Milpa lanza mejoras al repo base, el cliente puede recibirlas con un <code>git merge</code>. O no. El código es suyo.
+  </div>
+</details>
+
+<details>
+  <summary>milpa.config.ts — el único archivo que diferencia clientes</summary>
+  <div class="details-body">
+    Define nombre del negocio, colores, logo, y qué módulos están activos. Es el único lugar donde se personaliza la instancia de un cliente.<br><br>
+    <strong>Regla crítica:</strong> Nunca se editan los módulos para personalizar. Todo va en <code>milpa.config.ts</code>. Así las actualizaciones del repo base llegan sin conflictos.
+  </div>
+</details>
+
+<details>
+  <summary>Firebase y Supabase — los dos backends</summary>
+  <div class="details-body">
+    <strong>Firebase</strong> es el backend actual: Firestore para base de datos en tiempo real, Firebase Auth para autenticación, Firebase Hosting para el sitio.<br><br>
+    <strong>Supabase</strong> es a donde migramos. Es PostgreSQL gestionado con autenticación incluida, Row Level Security (permisos por fila), y Edge Functions. PostgreSQL permite relaciones reales y consultas más potentes.
+  </div>
+</details>
+
+<details>
+  <summary>SKILL.md — instrucciones para Claude</summary>
+  <div class="details-body">
+    Cada módulo incluye un <code>SKILL.md</code>: un documento que le explica a Claude (la IA que usamos) cómo está construido el módulo, qué patrones sigue, y qué no debe hacer.<br><br>
+    Sin <code>SKILL.md</code>, Claude no tiene contexto y puede introducir bugs o romper convenciones. Es un requisito antes de construir cualquier módulo nuevo.
+  </div>
+</details>`
+},
+
+{
   titulo: "Qué es Milpa",
   categoria: "Visión",
-  contenido: `# Qué es Milpa
+  contenido:
+`<span class="w-label">Visión</span>
+<h2 style="font-size:1.5rem;font-weight:700;color:#1c1917;margin:0 0 0.75rem">Construimos el software que las empresas medianas merecen</h2>
+<p style="color:#78716c;margin-bottom:1.5rem">La mayoría del software de gestión está diseñado para empresas grandes. Para una carpintería de 15 personas o una asociación sin fines de lucro en Austria, esas herramientas son demasiado complejas, caras, o simplemente no encajan.</p>
 
-Milpa es un estudio de software que construye **herramientas internas para negocios en crecimiento** (10–50 empleados).
+<div class="w-grid3" style="margin-bottom:1.5rem">
+  <div class="w-card" style="border-top:3px solid #059669">
+    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#059669;margin-bottom:0.5rem">Lo que somos</div>
+    <div style="font-size:0.875rem;color:#44403c;line-height:1.65">Un estudio que construye herramientas internas a medida para negocios de 10 a 50 personas.</div>
+  </div>
+  <div class="w-card" style="border-top:3px solid #059669">
+    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#059669;margin-bottom:0.5rem">Lo que entregamos</div>
+    <div style="font-size:0.875rem;color:#44403c;line-height:1.65">Su propio sistema: código MIT (tuyo), datos en tu infraestructura, sin suscripción por usuario.</div>
+  </div>
+  <div class="w-card" style="border-top:3px solid #059669">
+    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#059669;margin-bottom:0.5rem">Lo que NO somos</div>
+    <div style="font-size:0.875rem;color:#44403c;line-height:1.65">No somos agencia web, no revendemos Salesforce, no cobramos por asiento.</div>
+  </div>
+</div>
 
-No somos una agencia web. No somos una empresa SaaS. Somos el punto intermedio: software que se siente como un producto, funciona exactamente como el cliente lo necesita, y el cliente termina siendo dueño de todo.
+<span class="w-label">En números</span>
+<div class="w-card" style="margin-bottom:1.5rem;background:#f5f5f4;border:none">
+  <div style="display:flex;gap:2.5rem;flex-wrap:wrap;justify-content:center">
+    <div style="text-align:center">
+      <div style="font-size:2.25rem;font-weight:700;color:#1c1917;line-height:1">3</div>
+      <div style="font-size:0.75rem;color:#78716c;margin-top:0.25rem">Clientes activos</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:2.25rem;font-weight:700;color:#1c1917;line-height:1">4</div>
+      <div style="font-size:0.75rem;color:#78716c;margin-top:0.25rem">Módulos disponibles</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:2.25rem;font-weight:700;color:#1c1917;line-height:1">MIT</div>
+      <div style="font-size:0.75rem;color:#78716c;margin-top:0.25rem">Licencia del código</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:2.25rem;font-weight:700;color:#1c1917;line-height:1">$0</div>
+      <div style="font-size:0.75rem;color:#78716c;margin-top:0.25rem">Costo por usuario adicional</div>
+    </div>
+  </div>
+</div>
 
----
-
-## El problema que resolvemos
-
-Un negocio mediano en México vive así:
-
-- **Comunicación**: WhatsApp
-- **Inventario**: una hoja de Excel que nadie entiende
-- **Pedidos**: papel o un grupo de Telegram
-- **Documentos**: carpetas de Google Drive sin orden
-
-Tienen dos opciones malas:
-
-1. **Herramientas genéricas** (Notion, Trello, Monday) — no encajan, el equipo no las adopta, los datos quedan dispersos en tres plataformas
-2. **Software a medida tradicional** — $15,000–$50,000 USD, meses de espera, y cuando termina ya cambió lo que necesitaban
-
-Milpa es la tercera opción que no existía.
-
----
-
-## Cómo lo resolvemos
-
-Tenemos una **biblioteca de módulos pre-construidos**. Para cada cliente seleccionamos los que necesita, los configuramos a su flujo de trabajo, los diseñamos con su identidad visual y los desplegamos como su propio sistema.
-
-El cliente recibe:
-- Una URL propia (\`herramientas.sunegocio.com\`)
-- Solo los módulos que usa — sin funciones que no entiende
-- El código fuente completo (es suyo, para siempre)
-- Sus datos exportables en cualquier momento
-
-**Si en algún momento dejan de trabajar con Milpa, se llevan todo. Cero lock-in.**
-
----
-
-## Los tres diferenciadores
-
-1. **Software que encaja** — no es Notion con otro color. Está hecho para cómo trabajan ellos.
-2. **El cliente es dueño de todo** — código MIT, datos exportables, cero dependencia de Milpa.
-3. **Nosotros manejamos la complejidad técnica** — el carpintero no sabe qué es Supabase y no tiene por qué saberlo.
-
----
-
-## Mercado objetivo
-
-Negocios de 10–50 empleados en crecimiento en México y Latinoamérica que ya crecieron más allá de WhatsApp y Excel, pero no pueden pagar software a medida tradicional.`,
-},
-
-{
-  titulo: "Por qué existe Milpa",
-  categoria: "Visión",
-  contenido: `# Por qué existe Milpa
-
-## La raíz del problema
-
-La mayoría del software empresarial fue diseñado para empresas grandes con equipos dedicados a implementarlo. Cuando llega a un negocio de 20 personas, hay tres resultados comunes:
-
-1. **Lo compran y no lo usan** — demasiado complejo, el equipo vuelve al Excel.
-2. **Lo usan parcialmente** — el 20% de las funciones, el resto lo siguen haciendo en WhatsApp.
-3. **Lo contratan y se adaptan** — el negocio cambia sus procesos para encajar con el software, no al revés.
-
-Ninguno de los tres es bueno. Pero es lo que existe.
-
----
-
-## La oportunidad
-
-Hay una brecha enorme entre:
-- Las herramientas genéricas ($0–$50/mes que no encajan)
-- El software a medida tradicional ($15,000–$50,000 USD que pocos pueden pagar)
-
-En esa brecha caben miles de negocios que necesitan algo que funcione exactamente para ellos, a un precio razonable, con alguien que se haga responsable de que funcione.
-
----
-
-## Por qué ahora es posible
-
-Tres cosas que cambiaron:
-
-1. **Supabase y servicios modernos** — base de datos, auth y hosting en una fracción del costo de hace cinco años
-2. **Next.js y Tailwind** — construir interfaces de calidad producción es más rápido y barato que nunca
-3. **IA como co-piloto** — no como reemplazo del developer, sino como multiplicador de velocidad
-
-Milpa puede construir en semanas lo que antes tomaba meses, a un precio que un negocio mediano puede pagar.
-
----
-
-## El modelo open source
-
-El código es MIT. Cualquiera puede clonarlo y montar su propio ERP.
-
-Esto no es un riesgo — es la estrategia. El 95% de los clientes no pueden ni quieren hacer la instalación solos. El valor está en el servicio: instalación, configuración, personalización, soporte y evolución continua.
-
-El código abierto es el canal de distribución. El servicio es el negocio.`,
-},
-
-{
-  titulo: "Pitch y respuestas a objeciones",
-  categoria: "Visión",
-  contenido: `# Pitch y respuestas a objeciones
-
-## Para un cliente potencial (30 segundos)
-
-> "Tu negocio ya creció, pero las herramientas no crecieron contigo — todavía estás en WhatsApp y Excel. Nosotros construimos el sistema interno que necesitas: gestión de proyectos, tareas del equipo, historial de clientes, todo bajo tu propio dominio con tu logo. No es una plantilla genérica — está hecho para cómo trabajas tú. Cuesta menos que las suscripciones que ya pagas y no usas bien. Y si en algún momento quieres cambiar de proveedor, el sistema es tuyo: código y datos incluidos."
-
----
-
-## Para un colega o posible colaborador (60 segundos)
-
-> "Milpa es un estudio de software que resuelve un problema claro: los negocios de 10 a 50 empleados en México están operando con herramientas que no encajan. Son demasiado grandes para improvisar, demasiado chicos para pagar software a medida. Construimos una biblioteca de módulos open source — gestión de proyectos, tareas, CRM, wiki — y los desplegamos como un sistema a medida para cada cliente. El cliente paga setup más suscripción mensual, es dueño de su código y sus datos, y puede irse cuando quiera. El modelo de ingreso es recurrente. El código abierto es el canal de distribución."
-
----
-
-## Respuestas a las objeciones más comunes
-
-**"¿Por qué no uso Notion o Monday?"**
-> Puedes. Pero vas a terminar con tres herramientas que no se hablan entre sí, y tu equipo va a seguir usando WhatsApp para lo importante. Nosotros construimos un sistema que encaja exactamente con cómo trabajas — y el equipo realmente lo usa.
-
-**"¿Y si mañana Milpa deja de operar?"**
-> Eso es exactamente lo que protegemos. El código es tuyo y es open source. Tus datos están en tu propia cuenta. Si mañana desaparecemos, sigues operando normal. No te dejamos atado.
-
-**"¿Es caro?"**
-> Menos que lo que ya gastas en herramientas que no te encajan. Y menos que un mes de un empleado dedicado a ordenar Excel.
-
-**"¿En cuánto tiempo lo tienen listo?"**
-> Entre 4 y 8 semanas. Los primeros módulos suelen estar listos en 2–3 semanas y los vas usando mientras construimos el resto.
-
-**"¿Qué pasa si quiero agregar algo después?"**
-> Es lo que esperamos. Los módulos del catálogo se activan dentro de tu suscripción. Funciones nuevas o personalizadas se cotizan por hora.`,
+<span class="w-label">Personalidad de la marca</span>
+<div class="w-grid2">
+  <div class="w-card">
+    <div style="font-weight:600;color:#1c1917;margin-bottom:0.25rem">Directa</div>
+    <div style="font-size:0.875rem;color:#78716c">Sin relleno, sin buzzwords. Dice exactamente lo que hace en las menos palabras posibles.</div>
+  </div>
+  <div class="w-card">
+    <div style="font-weight:600;color:#1c1917;margin-bottom:0.25rem">Humana</div>
+    <div style="font-size:0.875rem;color:#78716c">Cálida pero no casual. Como personas que resuelven problemas, no como corporaciones.</div>
+  </div>
+  <div class="w-card">
+    <div style="font-weight:600;color:#1c1917;margin-bottom:0.25rem">Disruptiva</div>
+    <div style="font-size:0.875rem;color:#78716c">Cuestiona por qué las empresas pagan por software genérico inflado que no les queda.</div>
+  </div>
+  <div class="w-card">
+    <div style="font-weight:600;color:#1c1917;margin-bottom:0.25rem">Segura</div>
+    <div style="font-size:0.875rem;color:#78716c">No usa términos vagos. Si lo construimos, funciona. Si algo falla, lo arreglamos.</div>
+  </div>
+</div>`
 },
 
 // ══════════════════════════════════════════════════════
@@ -196,681 +213,135 @@ El código abierto es el canal de distribución. El servicio es el negocio.`,
 // ══════════════════════════════════════════════════════
 
 {
-  titulo: "Modelo de negocio y precios",
+  titulo: "Modelo de negocio",
   categoria: "Negocio",
-  contenido: `# Modelo de negocio y precios
+  contenido:
+`<span class="w-label">Negocio</span>
+<h2 style="font-size:1.5rem;font-weight:700;color:#1c1917;margin:0 0 0.75rem">Tres fuentes de ingreso, un cliente a la vez</h2>
+<p style="color:#78716c;margin-bottom:1.5rem">Setup fee inicial, cuota mensual de soporte, y horas adicionales cuando el cliente pide algo nuevo. Sin cobros por usuario, sin lock-in, sin sorpresas.</p>
 
-## Estructura de ingresos
+<span class="w-label">Las tres fuentes de ingreso</span>
+<div class="w-grid3" style="margin-bottom:1.5rem">
+  <div class="w-card" style="text-align:center">
+    <svg width="56" height="44" viewBox="0 0 56 44" style="margin:0 auto 0.875rem;display:block">
+      <rect x="4"  y="4"  width="14" height="36" rx="4" fill="#059669"/>
+      <rect x="22" y="16" width="14" height="24" rx="4" fill="#a7f3d0"/>
+      <rect x="40" y="28" width="14" height="12" rx="4" fill="#d1fae5"/>
+    </svg>
+    <div style="font-size:1.5rem;font-weight:700;color:#1c1917">$500–1,000</div>
+    <div style="font-size:0.85rem;font-weight:600;color:#1c1917;margin:0.3rem 0">Setup fee</div>
+    <div style="font-size:0.8rem;color:#78716c">Único, al inicio. Cubre onboarding, configuración inicial y primer deploy en producción.</div>
+  </div>
+  <div class="w-card" style="text-align:center">
+    <svg width="56" height="44" viewBox="0 0 56 44" style="margin:0 auto 0.875rem;display:block">
+      <rect x="4"  y="24" width="14" height="16" rx="4" fill="#059669"/>
+      <rect x="22" y="20" width="14" height="20" rx="4" fill="#059669"/>
+      <rect x="40" y="16" width="14" height="24" rx="4" fill="#059669"/>
+    </svg>
+    <div style="font-size:1.5rem;font-weight:700;color:#1c1917">$30–80 /mes</div>
+    <div style="font-size:0.85rem;font-weight:600;color:#1c1917;margin:0.3rem 0">Soporte mensual</div>
+    <div style="font-size:0.8rem;color:#78716c">Hosting, mantenimiento, actualizaciones de seguridad, respuesta a bugs.</div>
+  </div>
+  <div class="w-card" style="text-align:center">
+    <svg width="56" height="44" viewBox="0 0 56 44" style="margin:0 auto 0.875rem;display:block">
+      <rect x="4"  y="12" width="14" height="28" rx="4" fill="#059669"/>
+      <rect x="22" y="4"  width="14" height="36" rx="4" fill="#a7f3d0"/>
+      <rect x="40" y="20" width="14" height="20" rx="4" fill="#d1fae5"/>
+    </svg>
+    <div style="font-size:1.5rem;font-weight:700;color:#1c1917">$40–80 /hr</div>
+    <div style="font-size:0.85rem;font-weight:600;color:#1c1917;margin:0.3rem 0">Personalización</div>
+    <div style="font-size:0.8rem;color:#78716c">Módulos nuevos, integraciones, reportes personalizados, horas de desarrollo.</div>
+  </div>
+</div>
 
-### Setup fee — pago único al comenzar
-**$500 – $1,000 USD** por cliente nuevo.
+<span class="w-label">Por qué funciona este modelo</span>
+<div class="w-card" style="margin-bottom:1.25rem">
+  <div style="display:flex;flex-direction:column;gap:0.875rem">
+    <div style="display:grid;grid-template-columns:8px 1fr;gap:0.875rem;align-items:start">
+      <div style="width:8px;height:8px;background:#059669;border-radius:100px;margin-top:5px"></div>
+      <div style="font-size:0.875rem;color:#44403c"><strong>El costo no escala con el equipo.</strong> Si el cliente crece de 10 a 30 personas, su cuota mensual no cambia. Eso es un diferenciador enorme vs. SaaS que cobra por usuario.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:8px 1fr;gap:0.875rem;align-items:start">
+      <div style="width:8px;height:8px;background:#059669;border-radius:100px;margin-top:5px"></div>
+      <div style="font-size:0.875rem;color:#44403c"><strong>El cliente es dueño del código.</strong> En cualquier momento puede llevarse el código y los datos. Sin lock-in. Esto genera confianza y facilita cerrar el trato inicial.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:8px 1fr;gap:0.875rem;align-items:start">
+      <div style="width:8px;height:8px;background:#059669;border-radius:100px;margin-top:5px"></div>
+      <div style="font-size:0.875rem;color:#44403c"><strong>El soporte mensual es predecible.</strong> Con 10 clientes a $50/mes son $500/mes de base sin hacer nada nuevo. Escala sin complejidad.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:8px 1fr;gap:0.875rem;align-items:start">
+      <div style="width:8px;height:8px;background:#059669;border-radius:100px;margin-top:5px"></div>
+      <div style="font-size:0.875rem;color:#44403c"><strong>Las horas adicionales son el crecimiento.</strong> Cada módulo nuevo que pide un cliente es ingreso inmediato, y la mejora queda disponible para todos los demás.</div>
+    </div>
+  </div>
+</div>
 
-Cubre: instalación, configuración, diseño con la identidad del cliente, migración de datos existentes y capacitación inicial.
-
-### Suscripción mensual — recurrente
-**$30 – $80 USD / mes** (objetivo real a mediano plazo: $100–150/mes).
-
-Cubre: hosting, actualizaciones de seguridad, soporte técnico y acceso a módulos nuevos cuando estén disponibles.
-
-> Comparación: un negocio de 10–50 empleados gasta $100–300/mes en herramientas SaaS que no encajan. Un sistema a medida a $120/mes es una propuesta de valor muy clara.
-
-### Horas de personalización
-**$40 – $80 USD / hora** para cambios fuera del scope estándar.
-
----
-
-## La unidad económica
-
-### Estado actual (sin automatización):
-- Setup de un cliente: 40–60 horas de trabajo
-- Costo real del setup: $1,000–$1,500
-- Setup fee cobrado: $750 promedio
-- Resultado: pérdida en cada cliente nuevo
-- Break-even con MRR: 12–25 meses → insostenible
-
-### Con módulos automatizados (objetivo):
-- Setup: 10–15 horas
-- Costo real: $250–$375
-- Setup fee cobrado: $750
-- Ganancia en setup: +$375
-- MRR: ganancia desde el mes 1
-
-**La automatización del proceso de onboarding no es una mejora técnica. Es el requisito para que el negocio sea sostenible.**
-
----
-
-## Proyecciones a 12 meses
-
-| Mes | Clientes | MRR | Setup del mes | Ingreso total |
-|-----|----------|-----|---------------|---------------|
-| 3   | 2        | $150 | $750         | $900  |
-| 6   | 5        | $375 | $750         | $1,125|
-| 9   | 8        | $600 | $750         | $1,350|
-| 12  | 12       | $900 | $750         | $1,650|
-
-*Supone 1 cliente nuevo por mes, $75/mes promedio de suscripción.*
-
----
-
-## El modelo open source + servicio
-
-El código es MIT (libre). El servicio no lo es.
-
-Esto funciona porque el 95% de los clientes no pueden ni quieren hacer la instalación solos. Lo prueba el mercado: Supabase, Ghost, Cal.com, Plausible, HashiCorp — todos open source, todos con negocios de servicio rentables encima.
-
-El código abierto es el canal de distribución. El servicio es el negocio.`,
+<span class="w-label">Ciclo de vida de un cliente</span>
+<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem">
+  <div class="w-card" style="flex:1;min-width:100px;text-align:center;padding:0.875rem">
+    <div style="font-size:1.1rem;margin-bottom:0.25rem">🌱</div>
+    <div style="font-size:0.75rem;font-weight:600;color:#1c1917">Descubrimiento</div>
+    <div style="font-size:0.7rem;color:#78716c;margin-top:0.2rem">Demo y propuesta</div>
+  </div>
+  <div style="color:#d6d3d1;font-size:1.25rem;flex-shrink:0">→</div>
+  <div class="w-card" style="flex:1;min-width:100px;text-align:center;padding:0.875rem">
+    <div style="font-size:1.1rem;margin-bottom:0.25rem">⚙️</div>
+    <div style="font-size:0.75rem;font-weight:600;color:#1c1917">Setup</div>
+    <div style="font-size:0.7rem;color:#78716c;margin-top:0.2rem">Fork, config, deploy</div>
+  </div>
+  <div style="color:#d6d3d1;font-size:1.25rem;flex-shrink:0">→</div>
+  <div class="w-card" style="flex:1;min-width:100px;text-align:center;padding:0.875rem">
+    <div style="font-size:1.1rem;margin-bottom:0.25rem">🚀</div>
+    <div style="font-size:0.75rem;font-weight:600;color:#1c1917">Producción</div>
+    <div style="font-size:0.7rem;color:#78716c;margin-top:0.2rem">Soporte mensual</div>
+  </div>
+  <div style="color:#d6d3d1;font-size:1.25rem;flex-shrink:0">→</div>
+  <div class="w-card" style="flex:1;min-width:100px;text-align:center;padding:0.875rem">
+    <div style="font-size:1.1rem;margin-bottom:0.25rem">📈</div>
+    <div style="font-size:0.75rem;font-weight:600;color:#1c1917">Expansión</div>
+    <div style="font-size:0.7rem;color:#78716c;margin-top:0.2rem">Módulos nuevos</div>
+  </div>
+</div>`
 },
 
 {
   titulo: "Roles del equipo",
   categoria: "Negocio",
-  contenido: `# Roles del equipo
-
-## Tech Lead
-
-**Responsabilidades:**
-- Desarrollo de módulos nuevos
-- Setup e infraestructura por cliente
-- Mantenimiento del sistema en producción
-- Arquitectura del producto
-- Scripts de automatización (create-client, add-module)
-
-**Skills necesarios:** Next.js, TypeScript, Supabase/PostgreSQL, Firebase/Vercel, Git
-
-**Tiempo estimado:** 15–20h en setup inicial + 2–4h/mes en mantenimiento por cliente activo
-
----
-
-## Diseño / UX
-
-**Responsabilidades:**
-- Diseño de UI de cada módulo
-- Branding por cliente (colores, logo, tipografía)
-- Experiencia de usuario del sistema completo
-- Material visual de ventas (landing, demos, screenshots)
-
-**Skills necesarios:** Figma, principios de UX, Tailwind CSS básico, tipografía y color
-
-**Tiempo estimado:** 8–15h de diseño inicial + ajustes iterativos según feedback
-
----
-
-## Ventas / Operaciones / Project Management
-
-**Responsabilidades:**
-- Conseguir clientes nuevos (networking, referencias, outreach)
-- Gestionar el pipeline de ventas
-- Onboarding y comunicación con clientes
-- Gestión de proyectos activos
-- Soporte y relación a largo plazo
-- Facturación y cobros
-
-**Skills necesarios:** Ventas consultivas, project management, comunicación clara. No necesita saber programar.
-
-**Tiempo estimado:** 5–10h para cerrar una venta + 3–5h/mes en relación continua
-
----
-
-## Propuesta de split de ingresos
-
-| Rol | Setup fee | MRR | Justificación |
-|-----|-----------|-----|---------------|
-| Tech Lead | 40% | 40% | Mayor tiempo en setup y mantenimiento técnico |
-| Diseño | 30% | 25% | Intensivo en setup, menor en mantenimiento |
-| Ventas/Ops | 30% | 35% | Menor en setup, más en relación continua |
-
-*Milpa como entidad retiene 0% hasta que haya runway suficiente para invertir en el producto como tal.*`,
-},
-
-// ══════════════════════════════════════════════════════
-//  TÉCNICO
-// ══════════════════════════════════════════════════════
-
-{
-  titulo: "Arquitectura técnica",
-  categoria: "Técnico",
-  contenido: `# Arquitectura técnica
-
-## El stack
-
-| Capa | Tecnología | Por qué |
-|------|-----------|---------|
-| Frontend | Next.js 16 (App Router) + TypeScript | Static export, App Router, type-safe |
-| Estilos | Tailwind CSS v4 | Utility-first, personalización rápida por cliente |
-| Tipografía | DM Serif Display + DM Sans | Sistema visual Milpa (DM Serif en headings, DM Sans en todo lo demás) |
-| Base de datos | Supabase (PostgreSQL) | Open source, self-hosteable, SQL real, auth incluido |
-| Auth | Supabase Auth | Email + contraseña, Google OAuth |
-| Deploy | Firebase Hosting / Vercel | Edge CDN, gratis en planes pequeños |
-| Emails | Resend | Notificaciones transaccionales, API simple |
-| Repo | GitHub (MIT) | Open source, fork privado por cliente |
-
----
-
-## Cómo funciona por cliente
-
-Cada cliente recibe su propio deployment:
-
-\`\`\`
-Cliente: Carpintería Huayapam
-├── Repo: github.com/milpa-cloud/huayapam-erp (privado)
-│   └── Fork de milpa-cloud/erp con:
-│       ├── milpa.config.ts  ← colores, logo, módulos activos
-│       └── cliente/         ← código exclusivo de este cliente (si aplica)
-├── DB: Supabase project (cuenta del cliente)
-│   └── Migraciones corridas: 001_core, 002_tareas, 004_proyectos
-└── URL: tools.carpinteria-huayapam.com
-\`\`\`
-
----
-
-## Anatomía de un módulo
-
-\`\`\`
-src/modules/tareas/
-├── types.ts       ← interfaces TypeScript, constantes, helpers
-├── queries.ts     ← listeners (onSnapshot) y CRUD
-├── components/    ← componentes React del módulo
-│   ├── TareaCard.tsx
-│   ├── TareaModal.tsx
-│   └── KanbanColumn.tsx
-├── index.ts       ← barrel de exports públicos
-└── SKILL.md       ← instrucciones para la IA
-\`\`\`
-
----
-
-## La config por cliente
-
-\`\`\`typescript
-// milpa.config.ts
-export const config = {
-  cliente: {
-    nombre: "Carpintería Huayapam",
-    slug: "huayapam",
-    locale: "es",
-  },
-  modulos: ["tareas", "calendario", "wiki", "proyectos"],
-} as const;
-\`\`\`
-
-El sidebar, el router y el dashboard leen esta config. Nunca se hardcodean módulos en los componentes.
-
----
-
-## Reglas de código
-
-- **Las páginas son shells** — toda la lógica vive en \`src/modules/[nombre]/\`, nunca en \`src/app/\`
-- **El sidebar se construye dinámicamente** — desde \`config.modulos\` + \`MODULE_REGISTRY\`, nunca editando Sidebar.tsx
-- **Las personalizaciones van en \`milpa.config.ts\`** — nunca editando los módulos directamente
-- **Las queries sin \`orderBy\`** cuando hay un filtro \`where\` — ordenar en el cliente para evitar índices compuestos en Firestore`,
-},
-
-{
-  titulo: "Esquema de base de datos (Supabase)",
-  categoria: "Técnico",
-  contenido: `# Esquema de base de datos
-
-## El modelo
-
-Cada cliente tiene su **propio proyecto de Supabase**. Sus datos están completamente aislados de los de otros clientes. El cliente es dueño de su proyecto Supabase.
-
----
-
-## Tablas por módulo
-
-### Core (todas las migraciones)
-\`\`\`sql
--- Función trigger para updated_at automático
-CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-\`\`\`
-
-### Módulo: Tareas
-\`\`\`sql
-CREATE TABLE tareas (
-  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  titulo            text NOT NULL,
-  descripcion       text NOT NULL DEFAULT '',
-  estado            text NOT NULL DEFAULT 'pendiente'
-                    CHECK (estado IN ('pendiente', 'en_progreso', 'completada')),
-  prioridad         text NOT NULL DEFAULT 'media'
-                    CHECK (prioridad IN ('alta', 'media', 'baja')),
-  asignado          text NOT NULL DEFAULT '',
-  creado_por        text NOT NULL DEFAULT '',
-  fecha_vencimiento text,
-  proyecto_id       uuid REFERENCES proyectos(id) ON DELETE SET NULL,
-  created_at        timestamptz NOT NULL DEFAULT now(),
-  updated_at        timestamptz NOT NULL DEFAULT now()
-);
-\`\`\`
-
-### Módulo: Proyectos
-\`\`\`sql
-CREATE TABLE proyectos (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  nombre      text NOT NULL,
-  cliente     text NOT NULL DEFAULT '',
-  descripcion text NOT NULL DEFAULT '',
-  estado      text NOT NULL DEFAULT 'en_desarrollo'
-              CHECK (estado IN ('activo', 'en_desarrollo', 'completado', 'pausado')),
-  creado_por  text NOT NULL DEFAULT '',
-  created_at  timestamptz NOT NULL DEFAULT now(),
-  updated_at  timestamptz NOT NULL DEFAULT now()
-);
-\`\`\`
-
-### Módulo: Wiki
-\`\`\`sql
-CREATE TABLE wiki (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  titulo       text NOT NULL,
-  contenido    text NOT NULL DEFAULT '',
-  categoria    text NOT NULL DEFAULT 'General',
-  autor        text NOT NULL DEFAULT '',
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  updated_at   timestamptz NOT NULL DEFAULT now()
-);
-\`\`\`
-
----
-
-## Principio de referencias cruzadas
-
-Los módulos se comunican a través de **foreign keys**, no de APIs:
-
-\`\`\`
-tareas.proyecto_id → proyectos.id
-\`\`\`
-
-Una entidad **pertenece** al módulo que la gestiona. Otros módulos la **referencian**, nunca la duplican.
-
----
-
-## Cómo correr las migraciones
-
-\`\`\`bash
-# En el dashboard de Supabase: SQL Editor → New query → pegar el archivo
-# O con supabase CLI:
-supabase db push --db-url postgresql://...
-
-# Orden obligatorio:
-001_core_schema.sql    # siempre primero
-002_tareas.sql
-003_wiki.sql
-004_proyectos.sql      # proyectos debe existir antes que tareas (FK)
-005_calendario.sql     # solo crea un índice en tareas
-\`\`\``,
-},
-
-{
-  titulo: "Sistema de permisos y roles",
-  categoria: "Técnico",
-  contenido: `# Sistema de permisos y roles
-
-## El modelo: permisos por módulo
-
-Cada usuario puede tener permisos distintos en cada módulo. El contador puede tener acceso de editor en Wiki pero solo de visor en CRM.
-
----
-
-## Niveles de permiso
-
-| Nivel | Leer | Crear/Editar | Eliminar | Configurar |
-|-------|------|-------------|----------|-----------|
-| none | ✗ | ✗ | ✗ | ✗ |
-| viewer | ✓ | ✗ | ✗ | ✗ |
-| editor | ✓ | ✓ | ✗ | ✗ |
-| admin | ✓ | ✓ | ✓ | ✓ |
-
-El **Owner** (dueño del negocio) tiene acceso de admin en todos los módulos. No se puede revocar.
-
----
-
-## Implementación en Supabase (Row Level Security)
-
-\`\`\`sql
-CREATE TABLE module_permissions (
-  user_id     UUID REFERENCES auth.users,
-  module_slug TEXT,   -- 'tareas' | 'proyectos' | 'wiki' | etc.
-  nivel       TEXT,   -- 'none' | 'viewer' | 'editor' | 'admin'
-  PRIMARY KEY (user_id, module_slug)
-);
-
--- Solo pueden leer tareas los usuarios con permiso
-CREATE POLICY "tareas_select" ON tareas FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM module_permissions
-      WHERE user_id = auth.uid()
-        AND module_slug = 'tareas'
-        AND nivel IN ('viewer', 'editor', 'admin')
-    )
-  );
-\`\`\`
-
-Los permisos se aplican directamente en la base de datos. El frontend no puede ver filas que no le corresponden, aunque intente.
-
----
-
-## Gestión de usuarios
-
-El Owner puede:
-- Invitar usuarios por email → Supabase envía el link de activación
-- Asignar permisos por módulo
-- Revocar acceso en cualquier momento
-
-El invitado elige su contraseña en su primer login.`,
-},
-
-{
-  titulo: "Notificaciones y comunicación entre módulos",
-  categoria: "Técnico",
-  contenido: `# Notificaciones y comunicación entre módulos
-
-## El modelo: SQL, no APIs
-
-Los módulos no se llaman entre sí. Se comunican a través de **entidades compartidas en la base de datos**.
-
-\`\`\`sql
--- Proyectos mostrando datos de tareas (de otro módulo)
-SELECT p.*, COUNT(t.id) AS total_tareas
-FROM proyectos p
-LEFT JOIN tareas t ON t.proyecto_id = p.id
-GROUP BY p.id;
-\`\`\`
-
----
-
-## Sistema de notificaciones (3 capas)
-
-### Capa 1 — Trigger de PostgreSQL
-
-Cuando ocurre un evento en la base de datos, un trigger crea la notificación:
-
-\`\`\`sql
-CREATE OR REPLACE FUNCTION notify_task_assigned()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.asignado IS NOT NULL AND NEW.asignado != OLD.asignado THEN
-    INSERT INTO notifications (user_id, tipo, titulo, link)
-    VALUES (
-      NEW.asignado,
-      'task_assigned',
-      'Tarea asignada: ' || NEW.titulo,
-      '/tareas/' || NEW.id
-    );
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-\`\`\`
-
-### Capa 2 — Supabase Realtime (in-app)
-
-El frontend se suscribe a la tabla de notificaciones del usuario:
-
-\`\`\`typescript
-const channel = supabase
-  .channel('notificaciones')
-  .on('postgres_changes', {
-    event: 'INSERT',
-    schema: 'public',
-    table: 'notifications',
-    filter: \`user_id=eq.\${userId}\`,
-  }, (payload) => {
-    setNotifications(prev => [payload.new, ...prev]);
-  })
-  .subscribe();
-\`\`\`
-
-### Capa 3 — Edge Function (email vía Resend)
-
-\`\`\`typescript
-// supabase/functions/send-notification/index.ts
-Deno.serve(async (req) => {
-  const { record } = await req.json();
-  await resend.emails.send({
-    from: "Milpa <hola@milpa.cloud>",
-    to: userEmail,
-    subject: record.titulo,
-    html: emailTemplate(record),
-  });
-});
-\`\`\`
-
----
-
-## Flujo completo
-
-\`\`\`
-Usuario A asigna tarea a Usuario B
-  → UPDATE en tareas
-  → Trigger PostgreSQL → INSERT en notifications
-  → Supabase Realtime → campanita de B se actualiza
-  → Edge Function → Resend → email a B
-\`\`\``,
-},
-
-// ══════════════════════════════════════════════════════
-//  PRODUCTO
-// ══════════════════════════════════════════════════════
-
-{
-  titulo: "Catálogo de módulos",
-  categoria: "Producto",
-  contenido: `# Catálogo de módulos
-
-## Estado actual
-
-| Módulo | Estado | Descripción |
-|--------|--------|-------------|
-| **Tareas / Kanban** | ✅ v1 lista | Tablero de trabajo del equipo |
-| **Wiki** | ✅ v1 lista | Base de conocimiento interna |
-| **Calendario** | ✅ v1 lista | Agenda compartida (consume módulo de tareas) |
-| **Proyectos** | ✅ v1 lista | Gestión tipo Basecamp |
-| **CRM** | 🔴 No iniciado | Clientes, proveedores, historial |
-| **Password Manager** | 🔴 No iniciado | Credenciales del equipo, AES-256 |
-| **Dashboard** | 🔴 No iniciado | Métricas y widgets configurables |
-| **Auth real** | 🔴 No iniciado | Supabase Auth (actualmente el nombre en localStorage) |
-| **Notificaciones** | 🔴 No iniciado | In-app + email via Resend |
-
----
-
-## Módulo de Proyectos
-
-Un **Proyecto** es el contenedor de todo el trabajo alrededor de una entrega o cliente.
-
-\`\`\`
-Proyecto: "Remodelación casa Martínez"
-├── Información   → cliente, industria, estado, descripción
-├── Tareas        → tareas vinculadas a este proyecto (del módulo de Tareas)
-├── Checklist     → puntos/hitos con fecha estimada
-└── Módulos       → funciones personalizadas del proyecto
-\`\`\`
-
----
-
-## Módulo CRM (siguiente prioridad)
-
-Gestiona contactos: clientes, proveedores, prospectos.
-
-Campos principales: nombre, empresa, email, teléfono, tipo, notas, historial de interacciones.
-
-Integra con: Proyectos (cliente del proyecto), Calendario (reunión con contacto), Tareas (tarea relacionada a contacto).
-
----
-
-## Módulo Password Manager
-
-Credenciales compartidas del equipo. Requisito de seguridad crítico:
-- Las contraseñas se guardan **encriptadas con AES-256**
-- Ni Milpa ni Supabase puede leer el contenido sin la clave maestra del cliente
-- La clave maestra nunca sale del navegador del usuario
-
----
-
-## Roadmap de módulos futuros
-
-| Módulo | Descripción |
-|--------|-------------|
-| Inventario | Stock de productos/materiales, alertas de stock bajo |
-| Facturación simple | Cotizaciones y facturas básicas |
-| Sistema de reservas | Agenda para que los clientes del negocio reserven |
-| Portal de clientes | Vista read-only del estado del proyecto para el cliente externo |
-| Nómina | Cálculo y registro de pago semanal/quincenal |`,
-},
-
-// ══════════════════════════════════════════════════════
-//  OPERACIONES
-// ══════════════════════════════════════════════════════
-
-{
-  titulo: "Cómo hacer el onboarding de un cliente nuevo",
-  categoria: "Operaciones",
-  contenido: `# Onboarding de un cliente nuevo
-
-## Paso a paso
-
-### 1. Definición (reunión con el cliente)
-- ¿Qué módulos necesita? → elegir del catálogo
-- ¿Cuántos usuarios van a usar el sistema? → definir roles
-- ¿Tienen datos existentes para migrar? (Excel, otra herramienta)
-- Identidad visual: logo en PNG/SVG, colores principales, nombre del sistema
-
-### 2. Setup técnico
-
-\`\`\`bash
-# Por ahora manual. El cliente recibe un fork privado del repo público.
-# Ver docs/PLAYBOOK.md → Sección 2: Onboarding de cliente
-
-1. Fork de github.com/milpa-cloud/erp → github.com/milpa-cloud/[cliente]-erp
-2. Crear archivo milpa.config.ts con datos del cliente
-3. Crear cuenta Supabase (o crearla el cliente y darle acceso a Milpa)
-4. Correr migraciones SQL según los módulos activos
-5. Configurar dominio en Firebase Hosting
-6. Push inicial y primer deploy
-\`\`\`
-
-### 3. Base de datos del cliente
-
-El cliente crea su cuenta en supabase.com (plan gratuito es suficiente para empezar). Milpa:
-- Corre las migraciones de cada módulo activo
-- Transfiere la ownership al cliente
-- El cliente invita a Milpa como colaborador para soporte
-
-### 4. Migración de datos existentes
-
-- Si tiene Excel → importar vía CSV con script
-- Si tiene otra herramienta → exportar y mapear
-- Si empieza de cero → documentar el proceso de ingreso inicial
-
-### 5. Usuarios y permisos
-
-1. El Owner (dueño del negocio) crea su cuenta
-2. Milpa configura sus permisos de Owner
-3. El Owner invita a su equipo por email
-4. Cada miembro elige contraseña en su primer login
-
-### 6. Capacitación
-
-- 1 sesión de 1–2h con el equipo del cliente
-- Se recorre el sistema, se crean datos de prueba reales
-- Se entrega una guía breve (PDF o página de la wiki del cliente)
-
-### 7. Go-live
-
-- Se activa el dominio del cliente
-- Milpa hace seguimiento la primera semana
-- Check-in a los 30 días
-
----
-
-## Tiempo estimado por fase
-
-| Fase | Hoy | Con automatización futura |
-|------|-----|--------------------------|
-| Setup técnico | 20–40h | 5–10h |
-| Migración de datos | 5–20h | 5–20h (siempre manual) |
-| Capacitación | 2–4h | 2–4h |
-| **Total** | **27–64h** | **12–34h** |`,
-},
-
-{
-  titulo: "Cómo hacer un deploy",
-  categoria: "Operaciones",
-  contenido: `# Cómo hacer un deploy
-
-## ERP (milpa-erp)
-
-\`\`\`bash
-cd milpa-erp
-npm run build         # genera la carpeta out/
-firebase deploy --only hosting
-\`\`\`
-
-El build genera archivos estáticos en \`out/\`. Firebase Hosting los sirve desde el CDN de Google.
-
----
-
-## Landing (landing-milpa)
-
-\`\`\`bash
-cd landing-milpa
-npm run build
-firebase deploy --only hosting
-\`\`\`
-
----
-
-## Verificar antes de deployar
-
-1. ¿El build termina sin errores TypeScript? (\`npm run build\`)
-2. ¿Las variables de entorno en \`.env.local\` están correctas?
-3. ¿La versión de la app en producción no va a romper datos existentes en Firestore?
-
----
-
-## Variables de entorno necesarias
-
-\`\`\`
-NEXT_PUBLIC_FIREBASE_API_KEY
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-NEXT_PUBLIC_FIREBASE_PROJECT_ID
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-NEXT_PUBLIC_FIREBASE_APP_ID
-\`\`\`
-
-Ver \`.env.local.example\` en la raíz del proyecto.
-
----
-
-## Reglas de Firestore
-
-\`\`\`bash
-firebase deploy --only firestore:rules
-\`\`\`
-
-Las reglas están en \`firestore.rules\`. Actualmente en modo permisivo (\`allow read, write: if true\`) porque no hay auth implementado todavía. **Cambiar antes de dar acceso a clientes reales.**
-
----
-
-## Si el build falla
-
-Los errores más comunes:
-- **TypeScript error** — revisar el output de \`npm run build\`, la línea exacta y el archivo
-- **Import faltante** — algún componente importa algo que no existe
-- **Variable de entorno** — \`process.env.NEXT_PUBLIC_*\` undefined en build
-
-\`\`\`bash
-# Ver errores de TypeScript sin compilar
-npx tsc --noEmit
-\`\`\``,
+  contenido:
+`<span class="w-label">Equipo</span>
+<h2 style="font-size:1.5rem;font-weight:700;color:#1c1917;margin:0 0 0.75rem">Quién hace qué en Milpa</h2>
+<p style="color:#78716c;margin-bottom:1.5rem">Milpa opera como equipo pequeño y ágil. Claude actúa como co-desarrollador leyendo los SKILL.md de cada módulo — no toma decisiones de producto, ejecuta las instrucciones del equipo.</p>
+
+<div class="w-grid2" style="margin-bottom:1.5rem">
+  <div class="w-card">
+    <span class="w-badge w-green" style="margin-bottom:0.75rem;display:inline-block">Fundador / Tech Lead</span>
+    <div style="font-weight:600;color:#1c1917;margin-bottom:0.35rem">Pablo Spada</div>
+    <div style="font-size:0.875rem;color:#44403c;line-height:1.65">Arquitectura, desarrollo de módulos, relación con clientes, deployments. Punto de contacto en todos los proyectos.</div>
+  </div>
+  <div class="w-card">
+    <span class="w-badge w-blue" style="margin-bottom:0.75rem;display:inline-block">Co-desarrollador IA</span>
+    <div style="font-weight:600;color:#1c1917;margin-bottom:0.35rem">Claude (Anthropic)</div>
+    <div style="font-size:0.875rem;color:#44403c;line-height:1.65">Lee los SKILL.md de cada módulo, escribe código siguiendo los patrones del proyecto, arregla bugs, genera contenido. No reemplaza la decisión humana.</div>
+  </div>
+</div>
+
+<span class="w-label">Cómo trabajamos con IA</span>
+<div class="w-card" style="background:#f5f5f4;border:none;margin-bottom:1rem">
+  <div style="font-size:0.875rem;color:#44403c;line-height:1.75">
+    <strong>El flujo de trabajo típico:</strong><br><br>
+    <span style="display:flex;gap:0.75rem;margin-bottom:0.5rem"><span style="background:#1c1917;color:#fafaf9;border-radius:100px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0">1</span> Pablo describe qué necesita en lenguaje natural</span>
+    <span style="display:flex;gap:0.75rem;margin-bottom:0.5rem"><span style="background:#1c1917;color:#fafaf9;border-radius:100px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0">2</span> Claude lee el contexto del módulo vía SKILL.md y CLAUDE.md</span>
+    <span style="display:flex;gap:0.75rem;margin-bottom:0.5rem"><span style="background:#1c1917;color:#fafaf9;border-radius:100px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0">3</span> Claude escribe el código siguiendo los patrones del proyecto</span>
+    <span style="display:flex;gap:0.75rem;margin-bottom:0.5rem"><span style="background:#1c1917;color:#fafaf9;border-radius:100px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0">4</span> Pablo revisa, ajusta y hace commit</span>
+    <span style="display:flex;gap:0.75rem"><span style="background:#1c1917;color:#fafaf9;border-radius:100px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0">5</span> Si hay un patrón nuevo aprendido, se actualiza el SKILL.md</span>
+  </div>
+</div>
+
+<div class="w-card" style="background:#ecfdf5;border-color:#a7f3d0">
+  <div style="font-size:0.875rem;color:#065f46;line-height:1.65">
+    <strong>Por qué funciona:</strong> La IA es rápida en la implementación pero necesita contexto preciso. Los archivos SKILL.md, CLAUDE.md y esta wiki son ese contexto. Sin ellos, Claude toma decisiones arbitrarias que pueden romper convenciones del proyecto.
+  </div>
+</div>`
 },
 
 // ══════════════════════════════════════════════════════
@@ -878,391 +349,544 @@ npx tsc --noEmit
 // ══════════════════════════════════════════════════════
 
 {
-  titulo: "Carpintería Huayapam",
+  titulo: "Clientes activos",
   categoria: "Clientes",
-  contenido: `# Carpintería Huayapam
+  contenido:
+`<span class="w-label">Clientes</span>
+<h2 style="font-size:1.5rem;font-weight:700;color:#1c1917;margin:0 0 0.75rem">3 clientes, 3 contextos distintos</h2>
+<p style="color:#78716c;margin-bottom:1.5rem">Cada cliente tiene su propio fork privado del ERP, su propia base de datos, y su propio dominio. Milpa solo tiene acceso durante el soporte activo.</p>
 
-## Quiénes son
+<div style="display:flex;flex-direction:column;gap:1rem">
 
-Empresa de carpintería artesanal con más de 20 trabajadores en Oaxaca, México. Fabrican muebles y acabados de madera para proyectos de construcción y diseño de interiores.
+  <div class="w-card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.75rem">
+      <div>
+        <div style="font-weight:700;font-size:1rem;color:#1c1917">Carpintería Huayapam</div>
+        <div style="font-size:0.8rem;color:#78716c;margin-top:0.1rem">Oaxaca, México · primer cliente</div>
+      </div>
+      <span class="w-badge w-green">En producción</span>
+    </div>
+    <div style="font-size:0.875rem;color:#44403c;line-height:1.65;margin-bottom:0.875rem">Carpintería artesanal. Usan el ERP para gestionar pedidos, coordinar el taller, y dar seguimiento a proyectos de clientes.</div>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+      <span class="w-badge w-stone">Tareas</span>
+      <span class="w-badge w-stone">Proyectos</span>
+      <span class="w-badge w-stone">Calendario</span>
+    </div>
+  </div>
 
-**Estado:** En producción · uso diario
+  <div class="w-card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.75rem">
+      <div>
+        <div style="font-weight:700;font-size:1rem;color:#1c1917">Tomates La Era</div>
+        <div style="font-size:0.8rem;color:#78716c;margin-top:0.1rem">México</div>
+      </div>
+      <span class="w-badge w-green">En producción</span>
+    </div>
+    <div style="font-size:0.875rem;color:#44403c;line-height:1.65;margin-bottom:0.875rem">Productora agrícola. El ERP les ayuda a coordinar el equipo de campo, dar seguimiento a lotes y temporadas, y documentar procesos internos.</div>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+      <span class="w-badge w-stone">Tareas</span>
+      <span class="w-badge w-stone">Wiki</span>
+      <span class="w-badge w-stone">Calendario</span>
+    </div>
+  </div>
 
----
+  <div class="w-card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.75rem">
+      <div>
+        <div style="font-weight:700;font-size:1rem;color:#1c1917">Sprachenmehr e.V.</div>
+        <div style="font-size:0.8rem;color:#78716c;margin-top:0.1rem">Austria · proyecto pro bono</div>
+      </div>
+      <span class="w-badge w-amber">En desarrollo</span>
+    </div>
+    <div style="font-size:0.875rem;color:#44403c;line-height:1.65;margin-bottom:0.875rem">Asociación de educación lingüística. Proyecto pro bono en el portafolio de Milpa. Necesitan gestión de miembros, voluntarios, y eventos.</div>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+      <span class="w-badge w-stone">Tareas</span>
+      <span class="w-badge w-stone">Proyectos</span>
+      <span class="w-badge w-amber">CRM (pendiente)</span>
+    </div>
+  </div>
 
-## El problema que tenían
-
-Operaban con hojas de cálculo, papel y WhatsApp. El control de proyectos, inventario, nómina y cotizaciones era manual y disperso. A medida que crecieron, el caos aumentó.
-
----
-
-## Lo que construimos
-
-| Módulo | Descripción |
-|--------|-------------|
-| Gestión de proyectos | Control de proyectos activos por cliente |
-| Inventario | Stock de materiales, alertas de stock bajo |
-| Compras | Registro y seguimiento de compras a proveedores |
-| Nómina semanal | Cálculo y registro de pago semanal por trabajador |
-| Cotizaciones | Generación de presupuestos para clientes |
-| Control de asistencia | Registro diario de entrada/salida |
-| Dashboard financiero | Resumen de ingresos, gastos y utilidad |
-
----
-
-## Datos técnicos
-
-- **Repo:** \`github.com/milpa-cloud/huayapam-erp\` (privado)
-- **Deploy:** Firebase Hosting
-- **DB:** Firebase Firestore (primer cliente, antes de la migración a Supabase)
-- **Módulos:** personalizados para carpintería, no son los módulos estándar del catálogo
-
----
-
-## Notas importantes
-
-Este cliente fue el primero. El código es muy específico de su operación y está acoplado — no sigue la arquitectura modular nueva. Es técnicamente deuda.
-
-Si en algún momento piden cambios grandes, evaluar si conviene refactorizar hacia la arquitectura estándar.`,
-},
-
-{
-  titulo: "Tomates La Era",
-  categoria: "Clientes",
-  contenido: `# Tomates La Era
-
-## Quiénes son
-
-Empresa productora y comercializadora de tomate en Oaxaca, México. Controlan el ciclo completo: desde la siembra en invernadero hasta la distribución y venta.
-
-**Estado:** En producción
-
----
-
-## El problema que tenían
-
-Seguimiento de producción, inventario de producto y nómina en papel o Excel. Sin visibilidad del ciclo completo de producción ni de las finanzas del negocio.
-
----
-
-## Lo que construimos
-
-| Módulo | Descripción |
-|--------|-------------|
-| Seguimiento de producción | Control por ciclo: siembra, crecimiento, cosecha |
-| Inventario | Registro de entradas y salidas de producto |
-| Movimientos de producto | Trazabilidad de dónde va cada lote |
-| Contabilidad básica | Registro de ingresos y egresos |
-| Nómina | Cálculo de pago del equipo de campo |
-
----
-
-## Datos técnicos
-
-- **Repo:** \`github.com/milpa-cloud/tomates-erp\` (privado)
-- **Deploy:** Firebase Hosting
-- **DB:** Firebase Firestore
-
----
-
-## Notas importantes
-
-Similar a Huayapam: código específico de su operación, anterior a la arquitectura modular. Funciona bien, pero no reutilizable directamente.`,
-},
-
-{
-  titulo: "Sprachenmehr e.V.",
-  categoria: "Clientes",
-  contenido: `# Sprachenmehr e.V.
-
-## Quiénes son
-
-Asociación sin fines de lucro con sede en Viena, Austria, dedicada al fomento del multilingüismo y la enseñanza de lenguas minoritarias. Operan con un equipo pequeño de voluntarios y profesionales.
-
-**Estado:** En desarrollo
-
----
-
-## El alcance del proyecto
-
-Este proyecto es diferente a los anteriores: es **sitio web público + herramientas internas**.
-
-| Componente | Descripción | Estado |
-|-----------|-------------|--------|
-| Sitio web institucional | Presentación pública de la asociación (alemán/inglés) | En desarrollo |
-| Newsletter | Sistema de envío a suscriptores | Pendiente |
-| Gestión de proyectos | Herramientas internas del equipo | Pendiente |
-
----
-
-## Por qué es un proyecto de portafolio
-
-Sprachenmehr es un proyecto pro bono / a precio reducido. El objetivo principal es:
-1. Demostrar que Milpa puede trabajar con clientes europeos en idiomas distintos al español
-2. Tener un caso de uso en sector social/educativo
-3. Servir como portafolio de diseño web (el sitio tiene identidad visual propia, no Milpa)
-
----
-
-## Datos técnicos
-
-- **Repo:** \`github.com/milpa-cloud/sprachenmehr\` (privado)
-- **Stack del sitio web:** HTML/CSS estático por ahora (mockups), migrar a Next.js
-- **Idiomas:** Alemán (primario), inglés
-- **Deploy:** Firebase Hosting
-
----
-
-## Notas importantes
-
-La dirección de contacto principal es Wien, Austria. Las comunicaciones son en inglés y alemán. El presupuesto es limitado — ser eficiente con el tiempo.`,
+</div>`
 },
 
 // ══════════════════════════════════════════════════════
-//  GUÍAS
+//  TÉCNICO
 // ══════════════════════════════════════════════════════
 
 {
-  titulo: "Cómo usar el módulo de Tareas",
-  categoria: "Guías",
-  contenido: `# Cómo usar el módulo de Tareas
+  titulo: "Arquitectura del ERP",
+  categoria: "Técnico",
+  contenido:
+`<span class="w-label">Técnico</span>
+<h2 style="font-size:1.5rem;font-weight:700;color:#1c1917;margin:0 0 0.75rem">Cómo está organizado el código</h2>
+<p style="color:#78716c;margin-bottom:1rem">El ERP es una app Next.js con tres capas claras: las páginas son envolturas vacías, la lógica vive en los módulos, y la configuración del cliente vive en un solo archivo.</p>
 
-El módulo de Tareas es el tablero Kanban del equipo. Sirve para organizar el trabajo del día a día en columnas por estado.
+<span class="w-label">Estructura de carpetas</span>
+<pre class="w-tree">milpa-erp/
+├── <span class="g">src/</span>
+│   ├── <span class="g">app/</span>                   <span class="m">← Páginas de Next.js (solo shells)</span>
+│   │   ├── layout.tsx         <span class="m">← Layout raíz: sidebar + contenido</span>
+│   │   ├── page.tsx           <span class="m">← Dashboard / inicio</span>
+│   │   ├── tareas/            <span class="m">← Ruta /tareas</span>
+│   │   ├── calendario/        <span class="m">← Ruta /calendario</span>
+│   │   ├── wiki/              <span class="m">← Ruta /wiki  ← estás aquí</span>
+│   │   └── proyectos/         <span class="m">← Ruta /proyectos</span>
+│   ├── <span class="g">components/</span>            <span class="m">← Componentes compartidos</span>
+│   │   └── Sidebar.tsx        <span class="m">← Nav lateral, construida desde config</span>
+│   ├── <span class="g">lib/</span>
+│   │   └── firebase.ts        <span class="m">← Toda la lógica de base de datos</span>
+│   ├── <span class="g">modules/</span>               <span class="m">← La carne del sistema</span>
+│   │   ├── tareas/            <span class="m">← Módulo Kanban</span>
+│   │   ├── calendario/        <span class="m">← Módulo de eventos</span>
+│   │   ├── wiki/              <span class="m">← Módulo de base de conocimiento</span>
+│   │   ├── proyectos/         <span class="m">← Módulo Basecamp-style</span>
+│   │   └── registry.ts        <span class="m">← Lista de todos los módulos</span>
+│   └── <span class="g">types/</span>
+│       └── index.ts           <span class="m">← Interfaces TypeScript globales</span>
+├── <span class="g">milpa.config.ts</span>            <span class="m">← TODO lo que diferencia este cliente</span>
+├── tools/                     <span class="m">← Scripts (seed, migraciones)</span>
+└── skills/                    <span class="m">← Documentación para Claude</span></pre>
 
----
+<span class="w-label">Principio: páginas como shells</span>
+<div class="w-card" style="margin-bottom:1rem">
+  <div style="font-size:0.875rem;color:#44403c;line-height:1.65">
+    Las páginas en <code>src/app/</code> son deliberadamente vacías — solo importan y renderizan el módulo correspondiente. Toda la lógica real (queries, tipos, componentes) vive en <code>src/modules/</code>.<br><br>
+    <strong>¿Por qué?</strong> Para que los módulos sean portables. Si mañana un cliente necesita la wiki en dos rutas, no hay que duplicar lógica — solo montar el módulo dos veces.
+  </div>
+</div>
 
-## Las columnas del tablero
-
-| Columna | Significado |
-|---------|-------------|
-| **Pendiente** | Tarea registrada pero no iniciada |
-| **En progreso** | Alguien está trabajando en esto ahora |
-| **Completada** | Terminada |
-
----
-
-## Crear una tarea
-
-1. Haz clic en **"Nueva tarea"** (botón verde arriba a la derecha)
-2. Llena el título — hazlo descriptivo, no solo "revisar"
-3. Asigna a alguien del equipo (opcional)
-4. Define la prioridad: Alta / Media / Baja
-5. Agrega una fecha de vencimiento si aplica
-6. Escribe una descripción si el título no es suficiente
-7. Haz clic en **Guardar**
-
-La tarea aparece automáticamente en la columna **Pendiente**.
-
----
-
-## Mover una tarea entre columnas
-
-Haz clic en la tarea para abrir el panel de detalle, luego cambia el estado en el menú desplegable. O usa los botones de acción rápida en la tarjeta.
-
----
-
-## Tareas de un proyecto
-
-Las tareas que pertenecen a un proyecto específico se ven en la sección **Tareas** dentro del proyecto (módulo de Proyectos). Las tareas sin proyecto asignado aparecen en el tablero general.
-
----
-
-## Prioridades
-
-- **Alta** — urgente, necesita atención hoy
-- **Media** — importante pero no urgente
-- **Baja** — cuando haya tiempo
-
----
-
-## Buenas prácticas
-
-- Mantén el tablero actualizado — si terminas algo, marca como completada ese mismo día
-- No acumules tareas sin fecha. Si no tiene fecha, probablemente no es una tarea sino una idea
-- Las tareas completadas se pueden ver filtrando por estado`,
+<span class="w-label">Flujo de datos</span>
+<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem">
+  <div class="w-card" style="flex:1;min-width:90px;text-align:center;padding:0.75rem">
+    <div style="font-size:0.75rem;font-weight:600;color:#1c1917">Base de datos</div>
+    <div style="font-size:0.65rem;color:#78716c;margin-top:0.15rem">Firebase / Supabase</div>
+  </div>
+  <div style="color:#d6d3d1;font-size:1.25rem;flex-shrink:0">→</div>
+  <div class="w-card" style="flex:1;min-width:90px;text-align:center;padding:0.75rem">
+    <div style="font-size:0.75rem;font-weight:600;color:#1c1917">lib/firebase.ts</div>
+    <div style="font-size:0.65rem;color:#78716c;margin-top:0.15rem">Queries y listeners</div>
+  </div>
+  <div style="color:#d6d3d1;font-size:1.25rem;flex-shrink:0">→</div>
+  <div class="w-card" style="flex:1;min-width:90px;text-align:center;padding:0.75rem">
+    <div style="font-size:0.75rem;font-weight:600;color:#1c1917">modules/X/queries</div>
+    <div style="font-size:0.65rem;color:#78716c;margin-top:0.15rem">Funciones del módulo</div>
+  </div>
+  <div style="color:#d6d3d1;font-size:1.25rem;flex-shrink:0">→</div>
+  <div class="w-card" style="flex:1;min-width:90px;text-align:center;padding:0.75rem">
+    <div style="font-size:0.75rem;font-weight:600;color:#1c1917">modules/X/components</div>
+    <div style="font-size:0.65rem;color:#78716c;margin-top:0.15rem">UI del módulo</div>
+  </div>
+  <div style="color:#d6d3d1;font-size:1.25rem;flex-shrink:0">→</div>
+  <div class="w-card" style="flex:1;min-width:90px;text-align:center;padding:0.75rem">
+    <div style="font-size:0.75rem;font-weight:600;color:#1c1917">app/X/page.tsx</div>
+    <div style="font-size:0.65rem;color:#78716c;margin-top:0.15rem">Shell / ruta</div>
+  </div>
+</div>`
 },
 
 {
-  titulo: "Cómo usar el módulo de Proyectos",
-  categoria: "Guías",
-  contenido: `# Cómo usar el módulo de Proyectos
+  titulo: "El stack tecnológico",
+  categoria: "Técnico",
+  contenido:
+`<span class="w-label">Técnico</span>
+<h2 style="font-size:1.5rem;font-weight:700;color:#1c1917;margin:0 0 0.75rem">Qué usamos y por qué</h2>
+<p style="color:#78716c;margin-bottom:1.5rem">Cada decisión de stack tiene una razón concreta. No usamos tecnología por moda — la elegimos porque resuelve un problema específico para este tipo de producto.</p>
 
-El módulo de Proyectos es para gestionar el trabajo entregable a tus clientes. Un Proyecto agrupa toda la información y el trabajo relacionado con una entrega.
+<div style="display:flex;flex-direction:column;gap:0.5rem">
 
----
+<details>
+  <summary>Next.js 16 — Framework de frontend</summary>
+  <div class="details-body">
+    <strong>Por qué:</strong> App Router da una estructura de carpetas clara. Con <code>output: "export"</code> genera un sitio 100% estático que se sirve desde Firebase Hosting sin servidor.<br><br>
+    <strong>Restricción clave:</strong> <code>output: "export"</code> significa sin servidor en producción. No se pueden usar API Routes de Next.js ni Server Components con fetch. Toda la lógica de datos corre en el cliente. Esto es intencional: mantiene el hosting barato y simple.
+  </div>
+</details>
 
-## Crear un proyecto
+<details>
+  <summary>TypeScript — Lenguaje</summary>
+  <div class="details-body">
+    <strong>Por qué:</strong> Con IA escribiendo partes del código, TypeScript es el guardia de seguridad. Si Claude genera código con el tipo incorrecto, el compilador lo detecta antes de que llegue a producción.<br><br>
+    Los tipos de los módulos se definen en <code>modules/X/types.ts</code> — son la fuente de verdad de lo que puede vivir en la base de datos.
+  </div>
+</details>
 
-1. Haz clic en **"Nuevo proyecto"**
-2. Llena el nombre del proyecto (ej: "Remodelación oficina Martínez")
-3. Agrega el nombre del cliente
-4. Define el estado inicial: **En desarrollo**
-5. Agrega una descripción breve del alcance
-6. Guarda
+<details>
+  <summary>Tailwind CSS v4 — Estilos</summary>
+  <div class="details-body">
+    <strong>Por qué:</strong> Los estilos viven junto al markup, no hay que saltar entre archivos. La v4 tiene configuración más simple vía <code>@theme</code> en CSS.<br><br>
+    <strong>Regla de paleta:</strong> Solo la escala <code>stone</code> de Tailwind. Nunca <code>gray</code> ni <code>neutral</code>. El acento es <code>emerald-600</code>.
+  </div>
+</details>
 
----
+<details>
+  <summary>Firebase Firestore — Base de datos actual</summary>
+  <div class="details-body">
+    <strong>Por qué está aquí:</strong> Permite listeners en tiempo real (<code>onSnapshot</code>) sin infraestructura propia. Para el MVP fue la opción más rápida.<br><br>
+    <strong>Limitaciones:</strong> No soporta relaciones reales entre documentos, las queries son limitadas, y el modelo de precios escala mal con muchas lecturas.<br><br>
+    <strong>Patrón actual:</strong> <code>escuchar[Colección](callback)</code> retorna la función de limpieza para <code>useEffect</code>. Nunca se llama a Firestore directamente desde los componentes.
+  </div>
+</details>
 
-## Las secciones de un proyecto
+<details>
+  <summary>Supabase — Base de datos destino (migración en progreso)</summary>
+  <div class="details-body">
+    <strong>Por qué migramos:</strong> PostgreSQL permite relaciones reales con foreign keys, consultas con JOIN, índices, y Row Level Security (permisos por fila sin código adicional en el cliente).<br><br>
+    <strong>Lo que ganamos:</strong>
+    <ul>
+      <li>Auth completo (email + Google OAuth) sin código propio</li>
+      <li>Permisos por módulo via RLS — la base de datos rechaza accesos no autorizados</li>
+      <li>Triggers de PostgreSQL → Edge Functions → Resend (notificaciones por email)</li>
+      <li>Tiempo real via Supabase Realtime, similar a Firestore onSnapshot</li>
+    </ul>
+  </div>
+</details>
 
-### Información general
-- Datos del cliente, industria, estado del proyecto, descripción
+<details>
+  <summary>Firebase Hosting — Dónde vive el sitio</summary>
+  <div class="details-body">
+    Sirve sitios estáticos gratis o muy barato. El build de Next.js (<code>out/</code>) se sube directamente. Cada cliente tiene su propio Firebase project con su propio dominio.<br><br>
+    <code>firebase.json</code> en la raíz del proyecto define qué carpeta se sube y el site de destino.
+  </div>
+</details>
 
-### Tareas
-- Todas las tareas vinculadas a este proyecto
-- Puedes crear tareas directamente desde aquí — quedan vinculadas automáticamente
+<details>
+  <summary>lucide-react — Iconos</summary>
+  <div class="details-body">
+    Librería de iconos SVG consistente, ligera, con tipado TypeScript. Todos los iconos del ERP vienen de aquí. No mezclar con otras librerías de iconos.
+  </div>
+</details>
 
-### Checklist (Puntos del proyecto)
-- Lista de entregables o hitos con estado (completado / pendiente)
-- Útil para llevar un control de avance claro
-
-### Módulos del proyecto
-- Funciones o características específicas que tiene este proyecto
-- Cada una tiene su propio estado: Pendiente / En desarrollo / Completado
-
----
-
-## Estados del proyecto
-
-| Estado | Cuándo usarlo |
-|--------|---------------|
-| En desarrollo | Trabajo activo en curso |
-| Activo | En producción, soporte continuo |
-| Completado | Entrega terminada |
-| Pausado | En espera por causa externa |
-
----
-
-## Buenas prácticas
-
-- Un proyecto = un cliente o una entrega. No mezcles proyectos de clientes distintos.
-- Actualiza el estado de los módulos conforme avanzas — te da visibilidad del progreso.
-- Usa el checklist para los entregables que el cliente puede ver y aprobar.`,
+</div>`
 },
 
 {
-  titulo: "Cómo usar la Wiki",
-  categoria: "Guías",
-  contenido: `# Cómo usar la Wiki
+  titulo: "Qué es un módulo",
+  categoria: "Técnico",
+  contenido:
+`<span class="w-label">Técnico</span>
+<h2 style="font-size:1.5rem;font-weight:700;color:#1c1917;margin:0 0 0.75rem">El módulo: la unidad básica del ERP</h2>
+<p style="color:#78716c;margin-bottom:1.5rem">Un módulo es una función completa del sistema, autocontenida en su propia carpeta. Todo lo que necesita para funcionar está ahí adentro: tipos, base de datos, componentes de interfaz, y documentación.</p>
 
-La Wiki es la base de conocimiento interna del equipo. Aquí va todo lo que el equipo necesita saber para hacer su trabajo: procesos, decisiones, guías, información de clientes.
+<span class="w-label">Anatomía de un módulo</span>
+<pre class="w-tree">src/modules/<span class="g">nombre-del-modulo</span>/
+├── <span class="g">types.ts</span>         <span class="m">← Interfaces TypeScript + constantes del módulo</span>
+├── <span class="g">queries.ts</span>       <span class="m">← Funciones CRUD y listeners de base de datos</span>
+├── <span class="g">components/</span>      <span class="m">← Componentes React del módulo</span>
+│   ├── ListaItems.tsx
+│   ├── FormModal.tsx
+│   └── ItemCard.tsx
+├── <span class="g">index.ts</span>         <span class="m">← Re-exporta lo que la página necesita</span>
+└── <span class="g">SKILL.md</span>         <span class="m">← Instrucciones para Claude</span></pre>
 
----
+<span class="w-label">Qué hace cada archivo</span>
+<div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1.5rem">
+  <div class="w-card" style="display:grid;grid-template-columns:110px 1fr;gap:1rem;align-items:start;padding:0.875rem 1rem">
+    <code style="background:#f5f5f4;padding:3px 7px;border-radius:5px;font-size:0.8rem;display:block;width:fit-content">types.ts</code>
+    <div style="font-size:0.875rem;color:#44403c">Define la forma de los datos. Si el módulo guarda tareas, aquí está la interfaz <code>Tarea</code> con todos sus campos y tipos. También define constantes como los estados posibles ("pendiente", "en_progreso", "completada").</div>
+  </div>
+  <div class="w-card" style="display:grid;grid-template-columns:110px 1fr;gap:1rem;align-items:start;padding:0.875rem 1rem">
+    <code style="background:#f5f5f4;padding:3px 7px;border-radius:5px;font-size:0.8rem;display:block;width:fit-content">queries.ts</code>
+    <div style="font-size:0.875rem;color:#44403c">Contiene todas las funciones que hablan con la base de datos: crear, leer, actualizar, eliminar, y los listeners de tiempo real. Los componentes <strong>nunca</strong> llaman a Firebase directamente — siempre pasan por aquí.</div>
+  </div>
+  <div class="w-card" style="display:grid;grid-template-columns:110px 1fr;gap:1rem;align-items:start;padding:0.875rem 1rem">
+    <code style="background:#f5f5f4;padding:3px 7px;border-radius:5px;font-size:0.8rem;display:block;width:fit-content">components/</code>
+    <div style="font-size:0.875rem;color:#44403c">Los componentes React que forman la interfaz del módulo. Solo viven aquí — no en la carpeta global de components. Así cada módulo es autónomo y portable.</div>
+  </div>
+  <div class="w-card" style="display:grid;grid-template-columns:110px 1fr;gap:1rem;align-items:start;padding:0.875rem 1rem">
+    <code style="background:#f5f5f4;padding:3px 7px;border-radius:5px;font-size:0.8rem;display:block;width:fit-content">index.ts</code>
+    <div style="font-size:0.875rem;color:#44403c">El punto de entrada público. Re-exporta solo lo que la página necesita. Evita que las páginas tengan que conocer la estructura interna del módulo.</div>
+  </div>
+  <div class="w-card" style="display:grid;grid-template-columns:110px 1fr;gap:1rem;align-items:start;padding:0.875rem 1rem">
+    <code style="background:#f5f5f4;padding:3px 7px;border-radius:5px;font-size:0.8rem;display:block;width:fit-content">SKILL.md</code>
+    <div style="font-size:0.875rem;color:#44403c">Documentación en formato especial para Claude. Explica qué hace el módulo, qué patrones usa, y qué NO debe hacer. Requerido antes de construir cualquier módulo nuevo.</div>
+  </div>
+</div>
 
-## Para qué sirve la Wiki
+<span class="w-label">Cómo se activa un módulo por cliente</span>
+<div class="w-card" style="margin-bottom:1rem">
+  <p style="font-size:0.875rem;color:#44403c;margin-bottom:0.75rem;margin-top:0">En <code>milpa.config.ts</code>, el cliente declara qué módulos quiere activos:</p>
+  <pre style="background:#1c1917;color:#fafaf9;padding:1rem 1.25rem;border-radius:8px;font-family:ui-monospace,monospace;font-size:0.8rem;line-height:1.75;margin:0;overflow-x:auto">modulos: [
+  "tareas",
+  "proyectos",
+  "calendario",
+  // "wiki"  ← comentado = no aparece en este cliente
+]</pre>
+  <p style="font-size:0.8rem;color:#78716c;margin-top:0.75rem;margin-bottom:0">El sidebar se construye dinámicamente desde esta lista más el <code>MODULE_REGISTRY</code>. El código del módulo de wiki existe, pero si no está en la lista, el cliente nunca lo ve.</p>
+</div>
 
-- Documentar cómo se hacen las cosas (procesos repetibles)
-- Guardar información de clientes (contactos, contratos, notas)
-- Registrar decisiones importantes y su justificación
-- Crear guías para miembros nuevos del equipo
-- Cualquier cosa que no quieres tener que explicar dos veces
+<div class="w-card" style="background:#ecfdf5;border-color:#a7f3d0">
+  <div style="font-size:0.875rem;color:#065f46;line-height:1.65">
+    <strong>Regla de oro:</strong> Nunca edites el código de un módulo para personalizar a un cliente. Si necesita algo diferente, se configura en <code>milpa.config.ts</code> o se crea en su carpeta <code>cliente/</code>. Así las actualizaciones del repo base llegan sin conflictos.
+  </div>
+</div>`
+},
 
----
+// ══════════════════════════════════════════════════════
+//  PRODUCTO
+// ══════════════════════════════════════════════════════
 
-## Crear una página
+{
+  titulo: "Módulos disponibles",
+  categoria: "Producto",
+  contenido:
+`<span class="w-label">Producto</span>
+<h2 style="font-size:1.5rem;font-weight:700;color:#1c1917;margin:0 0 0.75rem">Los 4 módulos que existen hoy</h2>
+<p style="color:#78716c;margin-bottom:1.5rem">Cada módulo es una función completa probada en producción. Los nuevos se construyen cuando un cliente los necesita — así el producto crece con demanda real.</p>
 
-1. Haz clic en **"Nueva página"**
-2. Escribe el título — tiene que ser claro y descriptivo
-3. Elige la categoría que mejor describe el contenido
-4. Escribe el contenido usando Markdown:
-   - \`# Título\` para encabezados
-   - \`**texto**\` para **negritas**
-   - \`- ítem\` para listas
-   - \`---\` para separadores
-5. Guarda con el botón **Guardar**
+<div style="display:flex;flex-direction:column;gap:0.875rem;margin-bottom:1.5rem">
 
----
+  <div class="w-card">
+    <div style="display:flex;align-items:flex-start;gap:1rem">
+      <div style="width:42px;height:42px;background:#f5f5f4;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.35rem">
+          <strong style="color:#1c1917">Tareas</strong>
+          <span class="w-badge w-green">Disponible</span>
+        </div>
+        <div style="font-size:0.875rem;color:#44403c;line-height:1.6;margin-bottom:0.5rem">Tablero Kanban con columnas Pendiente / En progreso / Completada. Las tareas pueden pertenecer a un proyecto o ser independientes. Soporta prioridad, fecha de vencimiento y asignación.</div>
+        <code style="font-size:0.72rem;color:#78716c">src/modules/tareas/</code>
+      </div>
+    </div>
+  </div>
 
-## Categorías disponibles
+  <div class="w-card">
+    <div style="display:flex;align-items:flex-start;gap:1rem">
+      <div style="width:42px;height:42px;background:#f5f5f4;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.35rem">
+          <strong style="color:#1c1917">Calendario</strong>
+          <span class="w-badge w-green">Disponible</span>
+        </div>
+        <div style="font-size:0.875rem;color:#44403c;line-height:1.6;margin-bottom:0.5rem">Vista mensual de eventos del equipo. Permite crear, editar y eliminar eventos con título, fecha, hora de inicio/fin, y descripción.</div>
+        <code style="font-size:0.72rem;color:#78716c">src/modules/calendario/</code>
+      </div>
+    </div>
+  </div>
 
-| Categoría | Para qué |
-|-----------|---------|
-| Visión | Qué es Milpa, por qué existimos |
-| Negocio | Precios, roles, modelo económico |
-| Técnico | Stack, arquitectura, base de datos |
-| Producto | Módulos, roadmap |
-| Operaciones | Procesos del equipo, cómo hacer las cosas |
-| Clientes | Información de cada cliente activo |
-| Guías | Cómo usar cada parte del sistema |
+  <div class="w-card" style="border-color:#059669;border-width:1.5px">
+    <div style="display:flex;align-items:flex-start;gap:1rem">
+      <div style="width:42px;height:42px;background:#ecfdf5;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.35rem">
+          <strong style="color:#1c1917">Wiki</strong>
+          <span class="w-badge w-green">Disponible</span>
+          <span style="font-size:0.72rem;color:#059669;font-weight:600">← estás aquí</span>
+        </div>
+        <div style="font-size:0.875rem;color:#44403c;line-height:1.6;margin-bottom:0.5rem">Base de conocimiento interno. Páginas organizadas por categorías, búsqueda full-text, y editor de contenido con vista previa. El contenido puede ser Markdown o HTML rico.</div>
+        <code style="font-size:0.72rem;color:#78716c">src/modules/wiki/</code>
+      </div>
+    </div>
+  </div>
 
----
+  <div class="w-card">
+    <div style="display:flex;align-items:flex-start;gap:1rem">
+      <div style="width:42px;height:42px;background:#f5f5f4;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.35rem">
+          <strong style="color:#1c1917">Proyectos</strong>
+          <span class="w-badge w-green">Disponible</span>
+        </div>
+        <div style="font-size:0.875rem;color:#44403c;line-height:1.6;margin-bottom:0.5rem">Gestión de proyectos estilo Basecamp. Cada proyecto agrupa tareas, puntos de checklist, y módulos asignados. Panel con pestañas: Info, Tareas, Puntos, Módulos.</div>
+        <code style="font-size:0.72rem;color:#78716c">src/modules/proyectos/</code>
+      </div>
+    </div>
+  </div>
 
-## Editar una página
+</div>
 
-Abre la página, haz clic en **"Editar"**, modifica el contenido y guarda. La fecha de última actualización se registra automáticamente.
+<span class="w-label">En el roadmap</span>
+<div class="w-grid2">
+  <div class="w-card" style="opacity:0.55">
+    <div style="font-weight:600;color:#1c1917;font-size:0.875rem;margin-bottom:0.25rem">CRM &amp; Contactos</div>
+    <div style="font-size:0.8rem;color:#78716c">Clientes, proveedores, historial de interacciones.</div>
+  </div>
+  <div class="w-card" style="opacity:0.55">
+    <div style="font-weight:600;color:#1c1917;font-size:0.875rem;margin-bottom:0.25rem">Password Manager</div>
+    <div style="font-size:0.8rem;color:#78716c">Contraseñas del equipo con AES-256.</div>
+  </div>
+  <div class="w-card" style="opacity:0.55">
+    <div style="font-weight:600;color:#1c1917;font-size:0.875rem;margin-bottom:0.25rem">Dashboard</div>
+    <div style="font-size:0.8rem;color:#78716c">Widgets configurables con métricas clave.</div>
+  </div>
+  <div class="w-card" style="opacity:0.55">
+    <div style="font-weight:600;color:#1c1917;font-size:0.875rem;margin-bottom:0.25rem">Notificaciones</div>
+    <div style="font-size:0.8rem;color:#78716c">In-app + email via Resend. Triggers de base de datos.</div>
+  </div>
+</div>`
+},
 
----
+// ══════════════════════════════════════════════════════
+//  OPERACIONES
+// ══════════════════════════════════════════════════════
 
-## Buenas prácticas
+{
+  titulo: "Cómo hacer un deploy",
+  categoria: "Operaciones",
+  contenido:
+`<span class="w-label">Operaciones</span>
+<h2 style="font-size:1.5rem;font-weight:700;color:#1c1917;margin:0 0 0.75rem">Subir cambios a producción</h2>
+<p style="color:#78716c;margin-bottom:1.5rem">El deploy es manual y tiene dos pasos: construir el sitio estático y subirlo a Firebase Hosting. No hay CI/CD todavía — todo se hace desde la terminal dentro del directorio del cliente.</p>
 
-- Si tuviste que preguntarle a alguien cómo se hace algo, ese proceso debería estar en la Wiki.
-- Actualiza las páginas cuando los procesos cambien — una Wiki desactualizada confunde más que ayuda.
-- Usa encabezados (\`##\`) para estructurar páginas largas.`,
+<span class="w-label">Pasos para deployar</span>
+<div style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1.5rem">
+
+  <div class="w-step">
+    <div class="w-step-num">1</div>
+    <div class="w-step-body">
+      <div style="font-weight:600;color:#1c1917;font-size:0.875rem;margin-bottom:0.35rem">Entra al directorio del proyecto</div>
+      <pre style="background:#1c1917;color:#fafaf9;padding:0.6rem 0.875rem;border-radius:8px;font-family:ui-monospace,monospace;font-size:0.8rem;margin:0">cd milpa-erp</pre>
+    </div>
+  </div>
+
+  <div class="w-step">
+    <div class="w-step-num">2</div>
+    <div class="w-step-body">
+      <div style="font-weight:600;color:#1c1917;font-size:0.875rem;margin-bottom:0.35rem">Construye el sitio estático</div>
+      <pre style="background:#1c1917;color:#fafaf9;padding:0.6rem 0.875rem;border-radius:8px;font-family:ui-monospace,monospace;font-size:0.8rem;margin:0 0 0.5rem">npm run build</pre>
+      <div style="font-size:0.8rem;color:#78716c">Genera la carpeta <code>out/</code>. Si hay errores de TypeScript, el build falla aquí — corrígelos antes de continuar.</div>
+    </div>
+  </div>
+
+  <div class="w-step">
+    <div class="w-step-num">3</div>
+    <div class="w-step-body">
+      <div style="font-weight:600;color:#1c1917;font-size:0.875rem;margin-bottom:0.35rem">Sube a Firebase Hosting</div>
+      <pre style="background:#1c1917;color:#fafaf9;padding:0.6rem 0.875rem;border-radius:8px;font-family:ui-monospace,monospace;font-size:0.8rem;margin:0 0 0.5rem">firebase deploy --only hosting</pre>
+      <div style="font-size:0.8rem;color:#78716c">Sube <code>out/</code> al sitio configurado en <code>firebase.json</code>. Tarda ~30 segundos.</div>
+    </div>
+  </div>
+
+  <div class="w-step">
+    <div class="w-step-num">4</div>
+    <div class="w-step-body">
+      <div style="font-weight:600;color:#1c1917;font-size:0.875rem;margin-bottom:0.35rem">Verifica en producción</div>
+      <div style="font-size:0.8rem;color:#78716c">Abre el URL del cliente. Si el navegador muestra versión cacheada, presiona <code>Cmd+Shift+R</code> (Mac) para forzar recarga.</div>
+    </div>
+  </div>
+
+</div>
+
+<span class="w-label">Comandos adicionales</span>
+<div class="w-grid2" style="margin-bottom:1rem">
+  <div class="w-card">
+    <div style="font-weight:600;color:#1c1917;font-size:0.8rem;margin-bottom:0.5rem">Solo reglas de Firestore</div>
+    <pre style="background:#1c1917;color:#fafaf9;padding:0.6rem 0.875rem;border-radius:8px;font-family:ui-monospace,monospace;font-size:0.75rem;margin:0">firebase deploy --only firestore:rules</pre>
+  </div>
+  <div class="w-card">
+    <div style="font-weight:600;color:#1c1917;font-size:0.8rem;margin-bottom:0.5rem">Deploy completo (hosting + reglas)</div>
+    <pre style="background:#1c1917;color:#fafaf9;padding:0.6rem 0.875rem;border-radius:8px;font-family:ui-monospace,monospace;font-size:0.75rem;margin:0">firebase deploy</pre>
+  </div>
+</div>
+
+<div class="w-card" style="background:#fffbeb;border-color:#fde68a">
+  <div style="font-size:0.875rem;color:#92400e;line-height:1.65"><strong>⚠ Importante:</strong> Cada cliente tiene su propio proyecto Firebase. Antes de deployar, verifica que <code>.firebaserc</code> apunta al proyecto correcto con <code>firebase use --list</code>.</div>
+</div>`
 },
 
 {
-  titulo: "Cómo usar el Calendario",
-  categoria: "Guías",
-  contenido: `# Cómo usar el Calendario
+  titulo: "Onboarding de cliente nuevo",
+  categoria: "Operaciones",
+  contenido:
+`<span class="w-label">Operaciones</span>
+<h2 style="font-size:1.5rem;font-weight:700;color:#1c1917;margin:0 0 0.75rem">Del contrato firmado al sistema en producción</h2>
+<p style="color:#78716c;margin-bottom:1.5rem">El proceso completo de onboarding. De principio a fin suele tomar 2 a 3 días hábiles.</p>
 
-El módulo de Calendario muestra las tareas con fecha de vencimiento en una vista de calendario mensual. No es una agenda de eventos — es una forma de ver cuándo vencen las tareas del equipo.
+<span class="w-label" style="margin-top:0.5rem">Fase 1 — Infraestructura (día 1)</span>
+<div style="display:flex;flex-direction:column;gap:0.625rem;margin-bottom:1.25rem">
+  <div class="w-step">
+    <div class="w-step-num">1</div>
+    <div class="w-step-body">
+      <div style="font-weight:600;color:#1c1917;font-size:0.875rem">Crear proyecto Firebase</div>
+      <div style="font-size:0.8rem;color:#78716c;margin-top:0.2rem">console.firebase.google.com → New Project. Nombre: <code>[cliente]-erp</code>. Habilitar Firestore, Authentication y Hosting.</div>
+    </div>
+  </div>
+  <div class="w-step">
+    <div class="w-step-num">2</div>
+    <div class="w-step-body">
+      <div style="font-weight:600;color:#1c1917;font-size:0.875rem">Hacer fork del repo público</div>
+      <pre style="background:#1c1917;color:#fafaf9;padding:0.5rem 0.875rem;border-radius:8px;font-family:ui-monospace,monospace;font-size:0.75rem;margin:0.35rem 0 0.2rem">gh repo fork milpa-cloud/erp --org milpa-cloud --fork-name [cliente]-erp</pre>
+      <div style="font-size:0.8rem;color:#78716c">Crear privado. El cliente recibe acceso de lectura a su repo.</div>
+    </div>
+  </div>
+  <div class="w-step">
+    <div class="w-step-num">3</div>
+    <div class="w-step-body">
+      <div style="font-weight:600;color:#1c1917;font-size:0.875rem">Configurar variables de entorno</div>
+      <div style="font-size:0.8rem;color:#78716c;margin-top:0.2rem">Copiar <code>.env.local.example</code> → <code>.env.local</code> y llenar con las credenciales del nuevo Firebase project.</div>
+    </div>
+  </div>
+</div>
 
----
+<span class="w-label">Fase 2 — Personalización (día 1–2)</span>
+<div style="display:flex;flex-direction:column;gap:0.625rem;margin-bottom:1.25rem">
+  <div class="w-step">
+    <div class="w-step-num">4</div>
+    <div class="w-step-body">
+      <div style="font-weight:600;color:#1c1917;font-size:0.875rem">Editar milpa.config.ts</div>
+      <div style="font-size:0.8rem;color:#78716c;margin-top:0.2rem">Nombre del negocio, colores, logo, y lista de módulos activos. Este es el único archivo que se personaliza por cliente.</div>
+    </div>
+  </div>
+  <div class="w-step">
+    <div class="w-step-num">5</div>
+    <div class="w-step-body">
+      <div style="font-weight:600;color:#1c1917;font-size:0.875rem">Correr las migraciones SQL (si usa Supabase)</div>
+      <div style="font-size:0.8rem;color:#78716c;margin-top:0.2rem">Cada módulo activo tiene su SQL de creación de tablas. Sin esto, la app puede compilar pero falla en runtime sin que sea obvio.</div>
+    </div>
+  </div>
+</div>
 
-## Lo que muestra el Calendario
+<span class="w-label">Fase 3 — Entrega (día 2–3)</span>
+<div style="display:flex;flex-direction:column;gap:0.625rem;margin-bottom:1.25rem">
+  <div class="w-step">
+    <div class="w-step-num">6</div>
+    <div class="w-step-body">
+      <div style="font-weight:600;color:#1c1917;font-size:0.875rem">Primer deploy</div>
+      <pre style="background:#1c1917;color:#fafaf9;padding:0.5rem 0.875rem;border-radius:8px;font-family:ui-monospace,monospace;font-size:0.75rem;margin:0.35rem 0 0">npm run build && firebase deploy --only hosting</pre>
+    </div>
+  </div>
+  <div class="w-step">
+    <div class="w-step-num">7</div>
+    <div class="w-step-body">
+      <div style="font-weight:600;color:#1c1917;font-size:0.875rem">Sesión de capacitación</div>
+      <div style="font-size:0.8rem;color:#78716c;margin-top:0.2rem">Videollamada de 30–60 min. Mostrar cómo usar cada módulo activado, cómo crear usuarios, y a quién contactar para soporte.</div>
+    </div>
+  </div>
+  <div class="w-step">
+    <div class="w-step-num">8</div>
+    <div class="w-step-body">
+      <div style="font-weight:600;color:#1c1917;font-size:0.875rem">Documentar en la wiki interna</div>
+      <div style="font-size:0.8rem;color:#78716c;margin-top:0.2rem">Crear una página en la categoría Clientes con el contexto del cliente: módulos activos, personalizaciones, fecha de inicio, y persona de contacto.</div>
+    </div>
+  </div>
+</div>
 
-- **Tareas con fecha de vencimiento** del módulo de Tareas
-- Organizadas en la fecha en que vencen
-- Con colores que indican el estado: verde (completada), amarillo (en progreso), gris (pendiente)
-
----
-
-## Navegar entre meses
-
-Usa las flechas ← → en la parte superior para moverte entre meses. El mes actual está resaltado.
-
----
-
-## Ver el detalle de una tarea
-
-Haz clic en cualquier tarea en el calendario para ver sus detalles: título, estado, prioridad, a quién está asignada.
-
----
-
-## Importante
-
-El Calendario no tiene su propia base de datos. Consume las tareas del módulo de Tareas. Esto significa:
-- Para que una tarea aparezca en el Calendario, debe tener fecha de vencimiento
-- Si cambias el estado de una tarea desde el Calendario, el cambio se refleja en el módulo de Tareas y viceversa
-
----
-
-## Para agregar una tarea con fecha
-
-Ve al módulo de **Tareas**, crea o edita una tarea y asigna una fecha de vencimiento. Aparecerá automáticamente en el Calendario.`,
+<div class="w-card" style="background:#ecfdf5;border-color:#a7f3d0">
+  <div style="font-size:0.875rem;color:#065f46;line-height:1.65">
+    <strong>Regla:</strong> Si el cliente necesita algo único que no cabe en <code>milpa.config.ts</code>, se crea una carpeta <code>cliente/</code> en su fork con un <code>README.md</code> que documenta qué es, por qué existe, y quién lo pidió. Nunca se editan los módulos.
+  </div>
+</div>`
 },
 
 ];
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Runner ───────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log(`\nSubiendo ${paginas.length} páginas a la wiki de Milpa...\n`);
-  let ok = 0;
-  let errores = 0;
-
-  for (const pagina of paginas) {
-    try {
-      await crearPagina(pagina);
-      ok++;
-    } catch (e) {
-      console.error(`✗  ERROR en "${pagina.titulo}": ${e.message}`);
-      errores++;
-    }
-    await new Promise(r => setTimeout(r, 120));
+  console.log("Limpiando wiki anterior…");
+  await limpiarWiki();
+  console.log(`\nCreando ${paginas.length} páginas…\n`);
+  for (const p of paginas) {
+    await crearPagina(p);
   }
-
-  console.log(`\n✅ ${ok} páginas subidas | ❌ ${errores} errores`);
-  console.log("→ Abre el ERP en /wiki para verlas\n");
+  console.log(`\n✅  Wiki lista — ${paginas.length} páginas en 7 categorías.`);
 }
 
-main();
+main().catch(console.error);

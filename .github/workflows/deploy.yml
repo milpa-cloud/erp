@@ -19,6 +19,13 @@ jobs:
       - run: npm ci
 
       - run: npm run build
+        env:
+          NEXT_PUBLIC_FIREBASE_API_KEY: AIzaSyAYDXu78aOMjhhJcA8BVJlXOOqZ3jx7A9w
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: milpa-erp-app.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: milpa-erp-app
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: milpa-erp-app.firebasestorage.app
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "820656538345"
+          NEXT_PUBLIC_FIREBASE_APP_ID: 1:820656538345:web:b3128b785688810b30a678
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:

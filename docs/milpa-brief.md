@@ -1,199 +1,237 @@
-# Milpa — Brief del proyecto
-*Para la reunión del equipo · Junio 2026*
+# Milpa — Estado del proyecto
+*Actualizado: junio 2026 — documento vivo para el equipo*
 
 ---
 
 ## Qué es Milpa
 
-Milpa es un **estudio de software** que construye herramientas internas para negocios en crecimiento.
+Milpa es un **estudio de software** con base en Oaxaca, México. Construimos herramientas internas para negocios en crecimiento: sistemas de gestión personalizados que el cliente configura a su flujo, y de los que es dueño para siempre.
 
-No somos una agencia web. No somos una empresa SaaS. Somos el punto intermedio: construimos software que se siente como un producto, funciona exactamente como el cliente lo necesita, y el cliente termina siendo el dueño de todo.
+**El problema que resolvemos:** un negocio de 10–50 empleados tiene que elegir entre Excel y pagar $30,000 USD a una agencia. Milpa es la tercera opción — software real, a medida, a un precio que tiene sentido.
 
----
-
-## El problema que resolvemos
-
-Un negocio de 10 a 50 empleados en crecimiento hoy vive así:
-
-- **Comunicación**: WhatsApp
-- **Inventario**: una hoja de Excel que nadie entiende
-- **Pedidos**: papel o un grupo de Telegram
-- **Documentos internos**: carpetas de Google Drive sin orden
-- **Tareas del equipo**: listas en papel o de cabeza
-
-Saben que necesitan algo mejor. Pero tienen dos opciones malas:
-
-1. **Herramientas genéricas** (Notion, Trello, Monday) → no encajan en cómo trabajan, el equipo no las adopta, los datos quedan dispersos en tres plataformas distintas.
-2. **Software a medida tradicional** → $15,000 - $50,000 USD de una agencia, meses de desarrollo, y el día que terminan ya cambió lo que necesitaban.
-
-Milpa es la tercera opción que no existía.
+**Lo que nos diferencia:**
+- El cliente paga por el setup y el soporte, no por el código. El código es MIT (open source).
+- Cada cliente tiene su propia instancia: su URL, su base de datos, su repositorio de GitHub. Cero lock-in.
+- Sin cobro por usuario. El cliente puede agregar a todo su equipo.
+- Si el cliente deja de trabajar con Milpa, se lleva todo — código y datos.
 
 ---
 
-## Cómo lo resolvemos
+## Lo que ya existe y funciona (junio 2026)
 
-Tenemos una **biblioteca de módulos**: pedazos de software ya construidos que cubren las necesidades más comunes de un negocio:
+### Infraestructura confirmada
 
-| Módulo | Qué hace |
-|--------|----------|
-| **Proyectos** | Gestión de proyectos estilo Basecamp — tareas, hitos, equipo |
-| **Tareas / Kanban** | Tablero de trabajo del equipo |
-| **Wiki** | Base de conocimiento interna |
-| **Calendario** | Agenda compartida del equipo |
-| **CRM** | Contactos, clientes, proveedores con historial |
-| **Password Manager** | Credenciales compartidas del equipo, encriptadas |
+| URL | Qué es | Hosting | Estado |
+|-----|--------|---------|--------|
+| `milpa.cloud` | Landing page pública | Firebase (`milpa-studio-landing`) | ✅ Live |
+| `equipo.milpa.cloud` | ERP interno del equipo Milpa | Firebase (`milpa-erp-app`) | ✅ Live |
+| `hola@milpa.cloud` | Email de contacto | Zoho Mail (EU) | ✅ Funcionando |
+| `pablo.spada@milpa.cloud` | Email personal Pablo | Zoho Mail (EU) | ✅ Funcionando |
 
-Para cada cliente, seleccionamos los módulos que necesita, los configuramos a su flujo de trabajo, los diseñamos con su identidad visual, y los desplegamos como **su propio sistema**.
+- **DNS:** dominio registrado en Porkbun, nameservers en **Cloudflare**
+- **Deploy:** siempre `npm run build && firebase deploy --only hosting` desde la raíz del proyecto
+- **Formulario de contacto:** Cloud Function `contact` → Zoho SMTP (`smtp.zoho.eu`) → `hola@milpa.cloud`
+- **Secretos del formulario:** guardados como Firebase Secrets (`ZOHO_USER`, `ZOHO_PASS`)
 
-El cliente recibe:
-- Una URL propia (`herramientas.sunegocio.com`)
-- Su logo, sus colores, su idioma
-- Solo los módulos que usa — sin funciones que no entiende
-- **El código fuente completo** — es suyo, para siempre
-- **Sus datos completos** — puede exportarlos en cualquier momento
+### Clientes activos
 
-Si mañana dejan de trabajar con Milpa, se llevan todo. Cero lock-in.
+| Cliente | País | Estado | Firebase project |
+|---------|------|--------|-----------------|
+| Carpintería Huayapam | Oaxaca, México | ✅ En producción | `carpinteria-erp-v2` |
+| Tomates La Era | México | ✅ En producción | `tomates-la-era` |
+| Sprachenmehr e.V. | Viena, Austria | 🔨 En desarrollo | `milpa-sprachenmehr` |
 
----
+### Módulos construidos (ERP del equipo en `equipo.milpa.cloud`)
 
-## Por qué Milpa, no una agencia normal
+| Módulo | Ruta | Descripción |
+|--------|------|-------------|
+| Dashboard | `/` | Resumen general |
+| Tareas & Kanban | `/tareas` | Tareas con estados, filtros, tablero Kanban |
+| Calendario | `/calendario` | Eventos del equipo |
+| Wiki | `/wiki` | Base de conocimiento interna |
+| Proyectos | `/proyectos` | Proyectos con puntos y módulos asignados |
 
-Tres cosas juntas que nadie más ofrece a este precio:
+Todos corren sobre **Firebase Firestore** con listeners en tiempo real (`onSnapshot`).
 
-**1. Software que encaja, no software que "sirve"**
-No es una plantilla de Notion con otro color. Es un sistema construido con su forma de trabajar, sus nombres para las cosas, su proceso.
+### Landing page (`milpa.cloud`)
 
-**2. El cliente es dueño de todo**
-El código es open source (MIT). El cliente tiene acceso a su propia base de datos. Si quieren cambiar de proveedor, llevan sus datos en un archivo y se van. No hay costo de salida.
-
-**3. Nosotros manejamos toda la complejidad técnica**
-El carpintero no sabe qué es Firestore ni Next.js y no tiene que saberlo. Nosotros lo instalamos, lo configuramos, lo mantenemos. Ellos solo lo usan.
-
----
-
-## Dónde estamos hoy
-
-### Clientes en portfolio
-| Cliente | Ubicación | Módulos | Estado |
-|---------|-----------|---------|--------|
-| Carpintería Huayapam | Oaxaca, México | TBD | En exploración |
-| Tomates La Era | México | TBD | En exploración |
-| Sprachenmehr e.V. | Viena, Austria | Newsletter, Web | En desarrollo |
-
-### Lo que ya está construido
-- **ERP interno de Milpa** — el sistema que usamos nosotros para gestionar el equipo: tareas, calendario, wiki, proyectos
-- **Módulos funcionales**: Tareas/Kanban, Calendario, Wiki, Proyectos
-- **Landing page** de milpa.cloud
-- **Infraestructura base**: Next.js, Firebase, dominios configurados
-
-### Lo que falta para el primer cliente de pago
-- [ ] Módulo de Proyectos estilo Basecamp (en desarrollo)
-- [ ] Auth real (login con email / Google)
-- [ ] Sistema de setup por cliente (el script que genera un cliente nuevo)
-- [ ] Export de datos (el botón "descargar todo")
+- Bilingüe (ES/EN), un solo archivo `src/app/page.tsx`
+- Demo interactivo del producto con 4 tipos de negocio: Carpintería, Gym de escalada, Arquitectura, Academia de idiomas
+- Formulario de contacto funcionando → llega a `hola@milpa.cloud`
+- Design system completo documentado en `landing-milpa/DESIGN.md`
 
 ---
 
-## El modelo de negocio
+## Stack técnico
 
-### Ingresos
-
-**Setup fee** — cobro único al comenzar con un cliente nuevo:
-> $500 – $1,000 USD por cliente
-
-Cubre: instalación, configuración, diseño con la identidad del cliente, migración de datos existentes, capacitación inicial.
-
-**Suscripción mensual** — recurrente mientras el cliente use el sistema:
-> $30 – $80 USD / mes
-
-Cubre: hosting, actualizaciones de seguridad, soporte técnico, acceso a nuevos módulos cuando salgan.
-
-**Horas de personalización** — cuando el cliente pide cambios fuera del scope estándar:
-> $40 – $80 USD / hora
-
-### Proyecciones
-
-| Mes | Clientes activos | MRR | Ingresos setup | Total del mes |
-|-----|-----------------|-----|----------------|---------------|
-| 3 | 2 | ~$100 | $1,000 | ~$1,100 |
-| 6 | 5 | ~$300 | $1,000 | ~$1,300 |
-| 9 | 8 | ~$480 | $1,000 | ~$1,480 |
-| 12 | 12 | ~$720 | $1,000 | ~$1,720 |
-
-*Asumiendo 1 cliente nuevo por mes y precio promedio de $60/mes.*
-
-**La honestidad del número**: a precio bajo y volumen moderado, en 12 meses llegamos a ~$1,700/mes de ingreso. Split en 3 personas, eso es ~$560/persona/mes — complementario, no suficiente para vivir de esto solo.
-
-**Cómo crece**:
-- Cada cliente nuevo sube el MRR de forma permanente
-- A 30 clientes: ~$1,800/mes MRR estable + setup fees
-- El modelo escala cuando el costo de agregar un cliente nuevo es bajo (porque los módulos ya están)
-
-**El camino alternativo** — subir precio:
-Negocios de 10-50 empleados gastan $100-300/mes en herramientas SaaS que no les encajan. Un sistema a medida vale más. Precio real de mercado: $100-200/mes. Si llegamos a 12 clientes a $150/mes: $1,800/mes MRR.
-
----
-
-## Cómo nos dividimos el trabajo
-
-Tres roles que se complementan:
-
-### Tech Lead
-- Desarrollo de módulos nuevos
-- Setup e infraestructura por cliente
-- Mantenimiento del sistema
-- Arquitectura del producto
-
-### Diseño / UX
-- Diseño de UI de cada módulo
-- Branding por cliente (colores, logo, tipografía)
-- Experiencia de usuario del sistema
-- Material visual de ventas (landing, demos)
-
-### Ventas / Ops / Project Management
-- Conseguir clientes nuevos
-- Onboarding y comunicación con clientes
-- Gestión de proyectos activos
-- Soporte y relación a largo plazo
-
----
-
-## El stack técnico (para los técnicos de la reunión)
+### Lo que usamos HOY
 
 ```
-Frontend:    Next.js (App Router) + TypeScript + Tailwind CSS v4
-Fuente:      Geist Sans / DM Sans
-Backend:     Supabase (PostgreSQL) → migrando de Firebase
-Auth:        Supabase Auth (email+contraseña + Google OAuth)
-Deploy:      Firebase Hosting → Vercel
-Dominio:     milpa.cloud (landing) + equipo.milpa.cloud (ERP)
-Licencia:    MIT (open source)
-Repositorio: github.com/milpa-cloud/erp (próximamente)
+Framework:     Next.js 16.2.9, App Router, output: "export" (static)
+Lenguaje:      TypeScript
+Estilos:       Tailwind CSS v4
+Iconos:        lucide-react
+Base de datos: Firebase Firestore (tiempo real, onSnapshot)
+Auth:          Firebase Auth — implementado parcialmente, sin login en clientes aún
+Hosting:       Firebase Hosting — un site por proyecto
+Email:         Zoho Mail (EU) + Cloud Functions + nodemailer
+DNS:           Cloudflare
 ```
 
-**Por qué open source + negocio de servicio funciona:**
-El código es gratis. La implementación, configuración, personalización y soporte no lo son. Es el modelo de RedHat, Cal.com, Ghost, Supabase. El 95% de los clientes no pueden ni quieren hacer la instalación solos.
+### Hacia dónde vamos
+
+```
+Base de datos: Supabase (PostgreSQL) — migración gradual
+Auth:          Supabase Auth (email + Google OAuth)
+```
+
+La migración no es un evento — es gradual. Los módulos nuevos se construyen en Supabase. Los existentes se migran cuando haya oportunidad. No tirar lo que funciona.
+
+**Por qué no nos movemos de Firebase Hosting a Vercel:** Firebase con `output: "export"` funciona, es gratis en el tier actual y la infraestructura ya está configurada. No cambiar por cambiar.
 
 ---
 
-## La visión
+## Repositorios
 
-Un negocio chico o mediano en LATAM (o en cualquier parte) debería poder acceder al mismo nivel de herramientas internas que tiene una empresa grande — sin pagar lo que paga una empresa grande.
+```
+github.com/milpa-cloud/dev-studio  (PRIVADO) ← workspace del estudio
+  landing-milpa/    — milpa.cloud
+  milpa-erp/        — ERP genérico + instancia del equipo
+  sprachenmehr/     — mockups cliente Sprachenmehr
+  client-template/  — guía de onboarding
 
-Hoy, el carpintero de Oaxaca tiene que elegir entre Excel y gastar $30,000 en un sistema. Milpa es la tercera opción: software real, a su medida, a un precio que tiene sentido para él.
+github.com/milpa-cloud/erp  (PÚBLICO, MIT) ← PENDIENTE DE PUBLICAR
+  El código ya está listo en dev-studio/milpa-erp/
+  Publicarlo es un paso pendiente (ver decisiones pendientes)
+```
 
-Y cuando tenga las herramientas correctas, puede crecer.
+Los repos de clientes (huayapam-erp, tomates-erp, sprachenmehr) serán forks privados del repo público. Aún no existen en GitHub porque el repo público base no está publicado.
 
 ---
 
-## Próximos pasos concretos
+## Modelo de negocio
 
-1. **Definir roles del equipo** — quién asume qué área
-2. **Primer cliente de pago** — convertir uno de los prospectos actuales
-3. **Módulo de Proyectos** — completar el módulo más pedido
-4. **Migración a Supabase** — base técnica sólida para escalar
-5. **Repositorio público en GitHub** — base de la estrategia open source
-6. **Reescribir la landing page** — con este brief como base
+| Concepto | Monto |
+|----------|-------|
+| Setup fee (único) | $500 – $1,000 USD |
+| Soporte mensual | $30 – $80 USD/mes |
+| Personalización por hora | $40 – $80 USD/hr |
+
+**Setup cubre:** instalación, configuración con identidad del cliente, migración de datos, capacitación.  
+**Mensual cubre:** hosting, actualizaciones de seguridad, soporte, acceso a módulos nuevos.
+
+**Proyección honesta a 12 meses** (1 cliente nuevo/mes, $60/mes promedio):
+
+| Mes | Clientes | MRR | Setup ese mes | Total |
+|-----|----------|-----|---------------|-------|
+| 3 | 2 | ~$120 | $700 | ~$820 |
+| 6 | 5 | ~$300 | $700 | ~$1,000 |
+| 12 | 12 | ~$720 | $700 | ~$1,420 |
+
+Es ingreso complementario a corto plazo. Escala cuando el costo de agregar un cliente baja porque los módulos ya están construidos.
+
+---
+
+## Roles del equipo
+
+**Tech Lead**
+- Desarrollo de módulos y mantenimiento del ERP
+- Setup e infraestructura por cliente (Firebase, DNS, deploy)
+- Arquitectura del sistema
+
+**Diseño / UX**
+- UI de módulos nuevos
+- Branding por cliente (colores, logo, tipografía en `milpa.config.ts`)
+- Material visual de ventas
+
+**Ventas / Ops / Project Management**
+- Conseguir clientes nuevos y onboarding
+- Comunicación y soporte con clientes activos
+- Gestión de proyectos
+
+---
+
+## Decisiones ya tomadas — no revisitar sin razón fuerte
+
+| Decisión | Por qué |
+|----------|---------|
+| Un repo por cliente (fork privado) | Los datos y personalizaciones son del cliente; el código genérico se actualiza con merge del upstream |
+| Config sobre código (`milpa.config.ts`) | Permite recibir actualizaciones del repo público sin conflictos |
+| Módulos autocontenidos en `src/modules/` | Las páginas de Next.js son shells — lógica en el módulo, no en la página |
+| Static export + Firebase Hosting | Elimina servidores, simplifica deploy, reduce costo |
+| Zoho Mail para email | Plan free, SMTP disponible, EU datacenter — no depende de terceros adicionales |
+| Firestore para el ERP actual | En producción con datos reales; migrar requiere tiempo que no es prioridad ahora |
+| Un servicio por función (no uno por feature) | Minimiza complejidad operativa y dependencias externas |
+| El sidebar se construye dinámicamente | Desde `config.modulos` + `MODULE_REGISTRY` — no se edita a mano |
+
+---
+
+## Decisiones pendientes — hay que tomarlas
+
+### 1. Auth real para los clientes
+Actualmente no hay login implementado en los sistemas de Huayapam ni Tomates. Corren sin autenticación — cualquiera con la URL puede acceder.
+
+El plan es Supabase Auth (email + Google OAuth), pero no está construido.
+
+**Hay que decidir:** ¿cuándo priorizamos esto? ¿primero Firebase Auth como puente o directo a Supabase?
+
+### 2. Migración a Supabase
+El ERP usa Firestore. El objetivo es PostgreSQL con Supabase (ver `docs/DESIGN-supabase.md`). La migración es gradual.
+
+**Hay que decidir:** ¿cuándo empieza? ¿qué módulo va primero?
+
+### 3. Publicar el repo público en GitHub
+`github.com/milpa-cloud/erp` todavía no existe. El código está listo. Es un paso de posicionamiento — base de la estrategia open source.
+
+**Hay que decidir:** ¿cuándo? ¿qué incluir en el README público?
+
+### 4. Crear los repos de clientes en GitHub
+Huayapam y Tomates no tienen repos todavía porque el repo público base no está publicado. Por ahora el código vive en local y en Firebase.
+
+**Hay que decidir:** ¿esperamos al repo público o creamos repos privados vacíos ya?
+
+### 5. Qué módulos tiene cada cliente
+No está documentado qué módulos están activos para Huayapam y Tomates.
+
+**Hay que hacer:** mapear esto con cada cliente y documentarlo aquí.
+
+---
+
+## Próximos pasos (por prioridad)
+
+1. **Mapear módulos de Huayapam y Tomates** — reunión con cada cliente
+2. **Auth básica** — email+contraseña, aunque sea Firebase Auth primero, para que los sistemas tengan login
+3. **Publicar `github.com/milpa-cloud/erp`** — base de la estrategia open source
+4. **Primer módulo en Supabase** — el próximo que construyamos va sobre PostgreSQL
+5. **CRM / Contactos** — el módulo más pedido que no está construido
+
+---
+
+## Cómo trabajar en este proyecto
+
+**Para el día a día:** `docs/PLAYBOOK.md` — pasos exactos de cada operación estándar (onboarding, activar módulo, personalizar, construir módulo nuevo, aplicar updates).
+
+**Para entender las decisiones:** `docs/ARCHITECTURE.md` — el por qué de cada decisión de diseño.
+
+**Para la landing:** `landing-milpa/DESIGN.md` — design system completo.
+
+### Reglas que no se negocian
+
+- **NUNCA editar el código de un módulo** en el repo de un cliente — las personalizaciones van en `milpa.config.ts` o `cliente/`
+- **NUNCA meter código de un cliente** en el repo público
+- **SIEMPRE documentar** en `cliente/README.md` cualquier código único del cliente
+- **SIEMPRE correr la migración SQL** antes de activar un módulo — la app compila sin error y rompe silenciosamente en runtime si no se corre
+- **El sidebar NO se edita a mano** — se construye desde `config.modulos` + `MODULE_REGISTRY`
+- **NUNCA construir un módulo nuevo sin su `SKILL.md`** — sin él la IA no sabe cómo trabajar con ese módulo
+
+---
+
+## Lecciones aprendidas (operacionales)
+
+- **Eliminar un proyecto de Firebase** — Google permite restaurarlo dentro de los 30 días desde [console.cloud.google.com/cloud-resource-manager](https://console.cloud.google.com/cloud-resource-manager). Después de 30 días los datos se pierden permanentemente.
+- **Cloudflare proxy + Firebase custom domain** — al conectar un dominio nuevo, el proxy de Cloudflare (nube naranja) debe estar **apagado** mientras Firebase emite el certificado SSL. Una vez que Firebase muestra "Connected", se puede reactivar.
+- **Zoho Mail EU** — el SMTP correcto es `smtp.zoho.eu` (puerto 587). `smtp.zoho.com` no funciona para cuentas en el datacenter EU.
+- **Firebase project deletion** — antes de hacer cualquier cambio destructivo en Firebase Console, confirmar dos veces. La restauración existe pero es un proceso de emergencia, no un flujo normal.
 
 ---
 
